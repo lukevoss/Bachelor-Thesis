@@ -27,8 +27,8 @@ else:
 
 # copying a version of the code in destination folder
 import shutil
-shutil.copyfile('./main.py', './out/ae_{}/{}'.format(description,'inp.py'))
-shutil.copyfile('./Externals.py', './out/ae_{}/{}'.format(description,'Ext.py'))
+shutil.copyfile('./main_minimal.py', './out/ae_{}/{}'.format(description,'inp.py'))
+shutil.copyfile('./Externals_minimal.py', './out/ae_{}/{}'.format(description,'Ext.py'))
 
 
 # %%  loading the data set
@@ -40,7 +40,7 @@ params = {
 
 
 batch_size = 1
-n_step = 150 # how long the sequence is
+n_step = 80 # how long the sequence is
 imsize = 15 # imsize * imsize is the size of each slice in the sequence
 
 num_epochs = 5
