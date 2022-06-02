@@ -2,6 +2,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
+import torch.multiprocessing as mp
 from torch.autograd import Variable
 import matplotlib.pyplot as plt
 from Externals_minimal import nishDataset, postprocessing, DoseRNN
@@ -66,7 +67,7 @@ def prepare_directory():
   if not os.path.exists('./out'):
     os.mkdir('./out')
 
-  dirnum = 6 # attempt number, to avoid over writing data
+  dirnum = 7 # attempt number, to avoid over writing data
   description = 'attempt{}'.format(dirnum)
 
   # creating the output folder
@@ -96,11 +97,11 @@ def main():
       }
 
 
-  batch_size = 1
+  batch_size = 100
   n_step = 80 # how long the sequence is
   imsize = 15 # imsize * imsize is the size of each slice in the sequence
 
-  num_epochs = 100
+  num_epochs = 5
   learning_rate =  1e-5
 
   n_layer = 1 # number of layers in LSTM/RNN
@@ -126,9 +127,11 @@ def main():
     tt = time.time()
     for epoch in range(num_epochs):
       loss, img_t,dose_t, output_t= train(model, train_loader, batch_size, n_step, imsize, criterion, optimizer, epoch, num_epochs, device)
-      loss_train.append(loss)
+      #loss_train.append(loss) 
+      loss_train.append(loss.detach) #TODO Speed up?
       loss, img, dose, output = test(model, test_loader, batch_size, n_step, imsize, criterion, device)
-      loss_test.append(loss)
+      #loss_test.append(loss) 
+      loss_test.append(loss.detach) #TODO Speed up?
 
     print('elapsed time: {}'.format(time.time() - tt))
   except KeyboardInterrupt:
