@@ -127,11 +127,11 @@ def main():
     tt = time.time()
     for epoch in range(num_epochs):
       loss, img_t,dose_t, output_t= train(model, train_loader, batch_size, n_step, imsize, criterion, optimizer, epoch, num_epochs, device)
-      #loss_train.append(loss) 
-      loss_train.append(loss.detach) #TODO Speed up?
+      loss_train.append(loss) 
+      #loss_train.append(loss.detach) #TODO Speed up?
       loss, img, dose, output = test(model, test_loader, batch_size, n_step, imsize, criterion, device)
-      #loss_test.append(loss) 
-      loss_test.append(loss.detach) #TODO Speed up?
+      loss_test.append(loss) 
+      #loss_test.append(loss.detach) #TODO Speed up?
 
     print('elapsed time: {}'.format(time.time() - tt))
   except KeyboardInterrupt:
