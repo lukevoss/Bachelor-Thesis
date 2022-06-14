@@ -1,19 +1,13 @@
 import tensorflow as tf
-from tensorflow.keras.layers import Dense
-from tensorflow.keras import Sequential
-
 import tensorflow_probability as tfp
-tfd = tfp.distributions
-tfpl = tfp.layers
-
 import numpy as np
 import matplotlib.pyplot as plt
 
-tf.random.set_seed(42)
-np.random.seed(42)
+from tensorflow.keras.layers import Dense
+from tensorflow.keras import Sequential
 
-print(' TF Version:', tf.__version__, '\n', # 2.7.0
-      'TFP Version:', tfp.__version__) # 0.15.0
+tfd = tfp.distributions
+tfpl = tfp.layers
 
 x_100 = np.linspace(-1, 1, 100)
 y_100 = x_100 + np.random.randn(x_100.shape[0]) * 0.2
@@ -26,8 +20,8 @@ def prior(kernel_size, bias_size, dtype = None):
     n = kernel_size + bias_size # num of params
     return Sequential([
        tfpl.DistributionLambda(
-           #Laplace Distribution as prior
-           lambda t: tfd.Laplace(loc = tf.zeros(n), scale= tf.ones(n)) #L
+           #Normal Distribution as prior
+           lambda t: tfd.Normal(loc = tf.zeros(n), scale= tf.ones(n)) #L
        )                     
   ])
 
@@ -44,34 +38,22 @@ model_100 = Sequential([
                           units = 1,
                           make_prior_fn = prior,
                           make_posterior_fn = posterior,
-                          kl_weight = 1 / x_100.shape[0])
+                          kl_weight = 1 / x_100.shape[0]),
 ])
-model_100.compile(loss = 'mse', optimizer = tf.keras.optimizers.Adam(lr = 0.003))
-"""
-we haven't put a distribution on the output, all the uncertainties in the weights.
-So we can still use a normal deterministic loss-function
-"""
 
+
+
+model_100.compile(loss = 'mse', optimizer= 'adam')
 model_100.summary()
-
 model_100.fit(x_100, y_100, epochs=1000, verbose=0)
 model_100.evaluate(x_100, y_100)
-
-# Check mean, and variance of variational posterior and prior.
-dummy = np.array([[0.0324]])
-prior_protected = model_100.layers[0]._prior(dummy) 
-posterior_protected = model_100.layers[0]._posterior(dummy)
-print('prior mean:', prior_protected.mean().numpy()) # [0. 0.]
-print('prior variance:', prior_protected.variance().numpy()) # [1.9999999 1.9999999]
-print('posterior mean:', posterior_protected.mean().numpy()) # [ 0.99621785 -0.02372155]
-print('posterior variance:', posterior_protected.variance().numpy()) # [0.03062892 0.0123959]
 
 ensemble_size = 5
 
 plt.figure(figsize=(12,9))
 plt.scatter(x_100, y_100, s = 70, alpha = 0.3, marker = "o", label = 'Data', color = 'gray')
 for _ in range(ensemble_size):
-    plt.plot(x_100, model_100(x_100), color='red', alpha=0.8)        
+    plt.plot(x_100, model_100(x_100), color='red', alpha=0.8)         
 plt.legend()
 plt.show()
 
@@ -91,7 +73,7 @@ model_1000 = Sequential([
                           make_posterior_fn = posterior,
                           kl_weight = 1 / x_1000.shape[0])
 ])
-model_1000.compile(loss = 'mse', optimizer = tf.keras.optimizers.Adam(lr = 0.003))
+model_1000.compile(loss = 'mse', optimizer= 'adam')
 """
 we haven't put a distribution on the output, all the uncertainties in the weights.
 So we can still use a normal deterministic loss-function
@@ -102,15 +84,6 @@ model_1000.summary()
 model_1000.fit(x_1000, y_1000, epochs=1000, verbose=0)
 model_1000.evaluate(x_1000, y_1000)
 
-# Check mean, and variance of variational posterior and prior.
-dummy = np.array([[0.0324]])
-prior_protected = model_1000.layers[0]._prior(dummy) 
-posterior_protected = model_1000.layers[0]._posterior(dummy)
-print('prior mean:', prior_protected.mean().numpy()) # [0. 0.]
-print('prior variance:', prior_protected.variance().numpy()) # [1.9999999 1.9999999]
-print('posterior mean:', posterior_protected.mean().numpy()) # [ 0.99621785 -0.02372155]
-print('posterior variance:', posterior_protected.variance().numpy()) # [0.03062892 0.0123959]
-
 ensemble_size = 5
 
 plt.figure(figsize=(12,9))
@@ -119,6 +92,8 @@ for _ in range(ensemble_size):
     plt.plot(x_1000, model_1000(x_1000), color='red', alpha=0.8)        
 plt.legend()
 plt.show()
+
+# Plot comparison of difference in dataset size
 
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 4), sharex=True, sharey=True)
 for _ in range(5):

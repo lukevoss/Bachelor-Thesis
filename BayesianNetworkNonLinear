@@ -1,14 +1,70 @@
 import tensorflow as tf
+import tensorflow_probability as tfp
+import numpy as np
+import matplotlib.pyplot as plt
 from tensorflow.keras.layers import Dense
 from tensorflow.keras import Sequential
 
-import tensorflow_probability as tfp
+
 tfd = tfp.distributions
 tfpl = tfp.layers
 
-import numpy as np
-import matplotlib.pyplot as plt
 
-tf.random.set_seed(42)
-np.random.seed(42)
+x = np.linspace(-5, 2, 400)
+y = 4 * x * np.cos(np.pi * np.sin(x)) + 1 + np.random.randn(x.shape[0]) * 0.5
 
+plt.figure(figsize = (13, 10))
+plt.scatter(x, y, color = 'gray', s = 70, alpha = 0.3, marker = "o", label = 'Data',
+           linewidth = 3)
+
+def prior(kernel_size, bias_size, dtype = None):
+    n = kernel_size + bias_size # num of params
+    return Sequential([
+       tfpl.DistributionLambda(
+           lambda t: tfd.Laplace(loc = tf.zeros(n), scale= 2 * tf.ones(n))
+       )                     
+  ])
+
+def posterior(kernel_size, bias_size, dtype=None):
+    n = kernel_size + bias_size
+    return tf.keras.Sequential([
+      tfp.layers.VariableLayer(2 * n, dtype=dtype),
+      tfp.layers.DistributionLambda(lambda t: tfd.Independent(
+
+          tfd.Normal(loc=t[..., :n],
+                     scale= 1e-5 + 0.003 * tf.nn.softplus(t[..., n:])),
+          reinterpreted_batch_ndims=1)),
+    ])
+
+model_non_linear = Sequential([
+    
+    tfpl.DenseVariational(input_shape = (1,),
+                          units = 128,
+                          make_prior_fn = prior,
+                          make_posterior_fn = posterior,
+                          kl_weight = 1 / x.shape[0], activation = tf.nn.silu),
+    
+    tfpl.DenseVariational(units = 64,
+                          make_prior_fn = prior,
+                          make_posterior_fn = posterior,
+                          kl_weight = 1 / x.shape[0], activation = tf.nn.silu),
+
+    tfpl.DenseVariational(units = 1,
+                          make_prior_fn = prior,
+                          make_posterior_fn = posterior,
+                          kl_weight = 1 / x.shape[0])
+])
+
+model_non_linear.compile(loss = tf.keras.losses.MeanSquaredError(), optimizer = tf.keras.optimizers.Adam(lr = 0.003))
+model_non_linear.summary()
+
+model_non_linear.fit(x, y, epochs=4000, verbose=False)
+
+ensemble_size = 5
+
+plt.figure(figsize=(12,9))
+plt.scatter(x, y, s = 70, alpha = 0.3, marker = "o", label = 'Data', color = 'gray')
+for _ in range(ensemble_size):
+    plt.plot(x, model_non_linear(x), color='red', alpha=0.8)        
+plt.legend()
+plt.show()
