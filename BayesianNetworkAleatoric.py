@@ -1,3 +1,5 @@
+from cProfile import label
+from matplotlib import style
 import tensorflow as tf
 import tensorflow_probability as tfp
 import numpy as np
@@ -29,7 +31,7 @@ negloglik = lambda y, p_y: -p_y.log_prob(y)
 model_100.compile(optimizer=tf.optimizers.Adam(learning_rate = 0.05),
               loss=negloglik)
 
-model_100.fit(x_100, y_100, epochs=300);
+model_100.fit(x_100, y_100, epochs=600);
 
 model_100.summary()
 
@@ -42,11 +44,10 @@ model_std = model_distribution.stddev()
 y_m2sd = model_means - 2 * model_std
 y_p2sd = model_means + 2 * model_std
 
-plt.scatter(x_100, y_100, s = 70, alpha = 0.3, marker = "o", color = 'gray')
-plt.plot(x_100, model_means, color='black', alpha=0.8, label='model $\mu$')
-plt.plot(x_100, y_m2sd, color='green', alpha=0.8, label='model $\mu \pm 2 \sigma$', 
-            linewidth = 2)
-plt.plot(x_100, y_p2sd, color='green', alpha=0.8, linewidth = 2)
+plt.scatter(x_100, y_100, s = 30, alpha = 1, marker = "o", color = 'red', label = 'data')
+plt.plot(x_100,x_100, linestyle = 'dashed', color = 'black', linewidth = 3, label = 'target function')
+plt.plot(x_100, model_means, color= 'cornflowerblue', alpha=0.8, linewidth = 3, label='learned model $\mu$')
+plt.fill_between(x_100[:,0], y_m2sd[:,0], y_p2sd[:,0], alpha = 0.4, color='skyblue', label='learned model $\mu \pm 2 \sigma$')
 plt.legend()
 plt.show()
 

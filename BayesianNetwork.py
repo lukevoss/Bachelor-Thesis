@@ -11,8 +11,6 @@ tfpl = tfp.layers
 
 x_100 = np.linspace(-1, 1, 100)
 y_100 = x_100 + np.random.randn(x_100.shape[0]) * 0.2
-#x_100 = x_100.reshape(-1,1)
-#y_100 = y_100.reshape(-1,1)
 
 #Set up Priors and Posteriors
 def prior(kernel_size, bias_size, dtype = None):
@@ -53,25 +51,6 @@ model_100.fit(x_100, y_100, epochs=200);
 model_100.summary()
 model_100.evaluate(x_100, y_100)
 
-# get std and mean of model
-
-
-ensemble_size = 5
-
-plt.figure(1)
-plt.scatter(x_100, y_100, s = 70, alpha = 0.3, marker = "o", label = 'Data', color = 'gray')
-for _ in range(ensemble_size):
-    model_distribution = model_100(x_100)
-    model_means = model_distribution.mean().numpy()
-    model_std = model_distribution.stddev().numpy()
-    y_m2sd = model_means - 2 * model_std
-    y_p2sd = model_means + 2 * model_std
-
-    plt.plot(x_100, model_means, color='red', alpha=0.8)
-    plt.plot(x_100, y_m2sd, color='green', alpha=0.8, linewidth = 2)
-    plt.plot(x_100, y_p2sd, color='green', alpha=0.8, linewidth = 2)           
-plt.legend()
-plt.show()
 
 ###################Try if epistemic uncertainty can be reduced by more data ####################
 
@@ -90,56 +69,60 @@ model_1000 = Sequential([
 model_1000.compile(loss = nll, optimizer = tf.keras.optimizers.Adam(lr = 0.05))
 
 model_1000.summary()
-
 model_1000.fit(x_1000, y_1000, epochs=500)
 model_1000.evaluate(x_1000, y_1000)
 
-ensemble_size = 5
 
-plt.figure(2)
-plt.scatter(x_1000, y_1000, s = 70, alpha = 0.3, marker = "o", label = 'Data', color = 'gray')
-for _ in range(ensemble_size):
+# Plot comparison of difference in dataset size
+ensemble_size = 100
+fig, (ax1, ax2) = plt.subplots(1, 2, sharex=True, sharey=True)
+
+ax1.scatter(x_100, y_100, s = 30, alpha = 1, marker = "o", color = 'red', label = 'Data')
+ax1.plot(x_100,x_100, linestyle = 'dashed', color = 'black', linewidth = 3, label = 'Target function')
+for i in range(ensemble_size):
+    model_distribution = model_100(x_100)
+    model_means = model_distribution.mean().numpy()
+    model_std = model_distribution.stddev().numpy()
+    y_m2sd = model_means - 2 * model_std
+    y_p2sd = model_means + 2 * model_std
+
+    if i == 0:
+        y_upper_mean = model_means
+        y_lower_mean = y_upper_mean
+        y_upper_std = y_p2sd
+        y_lower_std = y_m2sd
+    else:
+        y_upper_mean = np.maximum(y_upper_mean, model_means)  
+        y_lower_mean = np.minimum(y_lower_mean, model_means)
+        y_upper_std = np.maximum(y_upper_std, y_p2sd)  
+        y_lower_std = np.minimum(y_lower_std, y_m2sd)   
+ax1.fill_between(x_100, y_upper_mean[:,0], y_lower_mean[:,0], alpha = 0.6, color='royalblue', label='Epistemic uncertainty')
+ax1.fill_between(x_100, y_upper_std[:,0], y_lower_std[:,0], alpha = 0.4, color='skyblue', label='Aleatoric uncertainty')
+ax1.set_title('100 Data Points')
+plt.legend()
+
+ax2.scatter(x_1000, y_1000, s = 30, alpha = 1, marker = "o", color = 'red', label = 'Data')
+ax2.plot(x_1000,x_1000, linestyle = 'dashed', color = 'black', linewidth = 3, label = 'Target function')
+for i in range(ensemble_size):
     model_distribution = model_1000(x_1000)
     model_means = model_distribution.mean().numpy()
     model_std = model_distribution.stddev().numpy()
     y_m2sd = model_means - 2 * model_std
     y_p2sd = model_means + 2 * model_std
 
-    plt.plot(x_1000, model_means, color='red', alpha=0.8)
-    plt.plot(x_1000, y_m2sd, color='green', alpha=0.8, linewidth = 2)
-    plt.plot(x_1000, y_p2sd, color='green', alpha=0.8, linewidth = 2)                
-plt.legend()
-plt.show()
+    if i == 0:
+        y_upper_mean = model_means
+        y_lower_mean = y_upper_mean
+        y_upper_std = y_p2sd
+        y_lower_std = y_m2sd
+    else:
+        y_upper_mean = np.maximum(y_upper_mean, model_means)  
+        y_lower_mean = np.minimum(y_lower_mean, model_means)
+        y_upper_std = np.maximum(y_upper_std, y_p2sd)  
+        y_lower_std = np.minimum(y_lower_std, y_m2sd) 
+ax2.fill_between(x_1000, y_upper_mean[:,0], y_lower_mean[:,0], alpha = 0.6, color='royalblue', label='Epistemic uncertainty')
+ax2.fill_between(x_1000, y_upper_std[:,0], y_lower_std[:,0], alpha = 0.4, color='skyblue', label='Aleatoric uncertainty')
+ax2.set_title('1000 Data Points')
 
-# Plot comparison of difference in dataset size
-
-fig, (ax1, ax2) = plt.subplots(1, 2, sharex=True, sharey=True)
-for _ in range(5):
-    ax1.scatter(x_100, y_100, s = 70, alpha = 0.3, marker = "o", color = 'gray')
-    for _ in range(ensemble_size):
-        model_distribution = model_100(x_100)
-        model_means = model_distribution.mean().numpy()
-        model_std = model_distribution.stddev().numpy()
-        y_m2sd = model_means - 2 * model_std
-        y_p2sd = model_means + 2 * model_std
-
-        ax1.plot(x_100, model_means, color='red', alpha=0.8)
-        ax1.plot(x_100, y_m2sd, color='green', alpha=0.8, linewidth = 2)
-        ax1.plot(x_100, y_p2sd, color='green', alpha=0.8, linewidth = 2)
-    ax1.set_title('100 Data Points')
-    
-    ax2.scatter(x_1000, y_1000, s = 70, alpha = 0.03, marker = "o", color = 'gray')
-    for _ in range(ensemble_size):
-        model_distribution = model_1000(x_1000)
-        model_means = model_distribution.mean().numpy()
-        model_std = model_distribution.stddev().numpy()
-        y_m2sd = model_means - 2 * model_std
-        y_p2sd = model_means + 2 * model_std
-
-        ax2.plot(x_1000, model_means, color='red', alpha=0.8)
-        ax2.plot(x_1000, y_m2sd, color='green', alpha=0.8, linewidth = 2)
-        ax2.plot(x_1000, y_p2sd, color='green', alpha=0.8, linewidth = 2) 
-    ax2.set_title('1000 Data Points')
-    
-    fig.suptitle('Epistemic Uncertainty Comparison')
+fig.suptitle('Epistemic Uncertainty Comparison')
 plt.show()
