@@ -5,20 +5,7 @@ import tensorflow_probability as tfp
 from tensorflow_probability.python.distributions import Normal
 
 def variationalPosterior(shape, name, prior, is_training):
-    """
-    this function create a variational posterior q(w/theta) over a given "weight:w" of the network
-    theta is parameterized by mean+standard*noise we apply the reparameterization trick from kingma et al, 2014
-    with correct loss function (free energy) we learn mean and standard to estimate of theta, thus can estimate
-    posterior p(w/D) by computing KL loss for each variational posterior q(w/theta) with prior(w)
-    :param name: is the name of the tensor/variable to create variational posterior  q(w/Q) for true posterior (p(w/D))
-    :param shape: is the shape of the weight variable
-    :param training: whether in training or inference mode
-    :return: samples (i.e. weights), mean of weights, std in-case of the training there is noise add to the weights
-    """
-    # theta=mu+sigma i.e. theta = mu+sigma i.e. mu+log(1+exp(rho)), log(1+exp(rho))
-    # is the computed by using tf.math.softplus(rho)
-
-
+  
     mu=tf.get_variable("{}_mean".format(name), shape=shape, dtype=tf.float32);
     rho=tf.get_variable("{}_rho".format(name), shape=shape, dtype=tf.float32);
     sigma = tf.math.softplus(rho)
@@ -79,3 +66,5 @@ class BayesianLSTMCell(tf.keras.layers.LSTMCell):
         new_state = LSTMStateTuple(new_cell, new_hidden)
 
         return new_hidden, new_state
+
+
