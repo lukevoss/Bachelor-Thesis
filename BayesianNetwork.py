@@ -54,7 +54,7 @@ model_100.evaluate(x_100, y_100)
 
 ###################Try if epistemic uncertainty can be reduced by more data ####################
 
-x_1000 = np.linspace(-1, 1, 1000)
+x_1000 = np.linspace(-1, 1, 400)
 y_1000 = x_1000 + np.random.randn(x_1000.shape[0]) * 0.2
 
 model_1000 = Sequential([
@@ -69,7 +69,7 @@ model_1000 = Sequential([
 model_1000.compile(loss = nll, optimizer = tf.keras.optimizers.Adam(lr = 0.05))
 
 model_1000.summary()
-model_1000.fit(x_1000, y_1000, epochs=500)
+model_1000.fit(x_1000, y_1000, epochs=1000)
 model_1000.evaluate(x_1000, y_1000)
 
 
@@ -99,7 +99,7 @@ for i in range(ensemble_size):
 ax1.fill_between(x_100, y_upper_mean[:,0], y_lower_mean[:,0], alpha = 0.6, color='royalblue', label='Epistemic uncertainty')
 ax1.fill_between(x_100, y_upper_std[:,0], y_lower_std[:,0], alpha = 0.4, color='skyblue', label='Aleatoric uncertainty')
 ax1.set_title('100 Data Points')
-plt.legend()
+
 
 ax2.scatter(x_1000, y_1000, s = 30, alpha = 1, marker = "o", color = 'red', label = 'Data')
 ax2.plot(x_1000,x_1000, linestyle = 'dashed', color = 'black', linewidth = 3, label = 'Target function')
@@ -125,4 +125,5 @@ ax2.fill_between(x_1000, y_upper_std[:,0], y_lower_std[:,0], alpha = 0.4, color=
 ax2.set_title('1000 Data Points')
 
 fig.suptitle('Epistemic Uncertainty Comparison')
+plt.legend()
 plt.show()

@@ -10,7 +10,7 @@ from tensorflow.keras import Sequential
 tfd = tfp.distributions
 tfpl = tfp.layers
 
-NUM_POINTS = 1000
+NUM_POINTS = 400
 x = np.linspace(-5, 2, NUM_POINTS)
 y_target = 4 * x * np.cos(np.pi * np.sin(x)) + 1
 y = y_target + np.random.randn(x.shape[0]) * 0.5
