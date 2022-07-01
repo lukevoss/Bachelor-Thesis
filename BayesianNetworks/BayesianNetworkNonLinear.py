@@ -10,7 +10,7 @@ from tensorflow.keras import Sequential
 tfd = tfp.distributions
 tfpl = tfp.layers
 
-NUM_POINTS = 400
+NUM_POINTS = 1000
 x = np.linspace(-5, 2, NUM_POINTS)
 y_target = 4 * x * np.cos(np.pi * np.sin(x)) + 1
 y = y_target + np.random.randn(x.shape[0]) * 0.5
@@ -31,7 +31,7 @@ def posterior(kernel_size, bias_size, dtype=None):
       tfp.layers.DistributionLambda(lambda t: tfd.Independent(
 
           tfd.Normal(loc=t[..., :n],
-                     scale= 1e-5 + 0.001 * tf.nn.softplus(t[..., n:])),
+                     scale= 1e-6 + 0.001 * tf.nn.softplus(t[..., n:])),
           reinterpreted_batch_ndims=1)),
     ])
 

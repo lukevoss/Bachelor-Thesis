@@ -35,7 +35,7 @@ class BayesianRegressor(nn.Module):
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 bayes_network = BayesianRegressor(input_size, output_size).to(device)
 optimizer = optim.Adam(bayes_network.parameters(), lr=0.001)
-criterion = torch.nn.NLLLoss() #TODO
+criterion = torch.nn.GaussianNLLLoss #TODO
 
 
 
