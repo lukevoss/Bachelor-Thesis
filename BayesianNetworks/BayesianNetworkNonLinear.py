@@ -68,6 +68,7 @@ nll = lambda y, p_y: -p_y.log_prob(y)
 
 model_non_linear.compile(optimizer=tf.optimizers.Adam(learning_rate = 0.001),
               loss=nll)
+test = model_non_linear.losses #KL Divergence loss
 model_non_linear.summary()
 model_non_linear.fit(x, y, epochs=1000)
 
