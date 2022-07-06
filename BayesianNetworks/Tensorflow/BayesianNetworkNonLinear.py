@@ -70,7 +70,7 @@ model_non_linear.compile(optimizer=tf.optimizers.Adam(learning_rate = 0.001),
               loss=nll)
 test = model_non_linear.losses #KL Divergence loss
 model_non_linear.summary()
-model_non_linear.fit(x, y, epochs=10)
+model_non_linear.fit(x, y, batch_size=50, epochs=1000)
 
 ensemble_size = 1
 
