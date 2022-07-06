@@ -20,29 +20,33 @@ output_size = 1
 class BayesianRegressor(nn.Module):
     def __init__(self, input_dim, output_dim):
         super().__init__()
-        #self.linear = nn.Linear(input_dim, output_dim)
-        self.blinear1 = BayesianLinear(input_dim, 128)
-        #self.blinear1 = BayesianLinear(input_dim, output_dim)
-        self.blinear2 = BayesianLinear(128, output_dim)
-        #self.blinear3 = BayesianLinear(64, output_dim)
+        self.blinear1 = BayesianLinear(input_dim, 128, prior_sigma_1 = 1)#, prior_sigma_2 = 1)#, prior_pi=2, posterior_mu_init = 0)#, posterior_rho_init = 0)
+        self.blinear2 = BayesianLinear(128, 64, prior_sigma_1 = 1)#, prior_sigma_2 = 1)#, prior_pi=2,  posterior_mu_init = 0)
+        self.blinear3 = BayesianLinear(64, 32, prior_sigma_1 = 1)#, prior_sigma_2 = 1)#, prior_pi=2,  posterior_mu_init = 0)
+        self.blinear4 = BayesianLinear(32, 16, prior_sigma_1 = 1)#, prior_sigma_2 = 1)#, prior_pi=2,  posterior_mu_init = 0)
+        self.blinear5 = BayesianLinear(16, output_dim, prior_sigma_1 = 1)#, prior_sigma_2 = 1)#, prior_pi=2,  posterior_mu_init = 0)
         
     def forward(self, x):
         x_ = self.blinear1(x)
-        #return F.silu(x_)
-        #x_ = F.silu(x_)
-        #x_ = self.blinear2(x_)
-        #x_ = F.silu(x_)
-        return self.blinear2(x_)
+        x_ = F.silu(x_)
+        x_ = self.blinear2(x_)
+        x_ = F.silu(x_)
+        x_ = self.blinear3(x_)
+        x_ = F.silu(x_)
+        x_ = self.blinear4(x_)
+        x_ = F.silu(x_)
+        return self.blinear5(x_)
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+#device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+device = 'cpu'
 bayes_network = BayesianRegressor(input_size, output_size).to(device)
 optimizer = optim.Adam(bayes_network.parameters(), lr=0.001)
-criterion = torch.nn.MSELoss() #TODO
+criterion = torch.nn.MSELoss()#TODO
 
 
 
 iteration = 0
-for epoch in range(100):
+for epoch in range(10):#2000
     for i, data in enumerate(x):
         optimizer.zero_grad()
         label = y[i]
@@ -50,7 +54,7 @@ for epoch in range(100):
         data = data.unsqueeze(dim=0)
         loss = bayes_network.sample_elbo(inputs=data.to(device),
                         labels=label.to(device),
-                        criterion=criterion,
+                        criterion=criterion, 
                         sample_nbr=3,
                         complexity_cost_weight=1/x.shape[0])
         loss.backward()

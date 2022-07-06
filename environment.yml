@@ -1,4 +1,4 @@
-name: torch_nish
+name: bayesian_luke
 channels:
   - pytorch
   - conda-forge

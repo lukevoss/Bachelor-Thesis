@@ -31,7 +31,7 @@ def posterior(kernel_size, bias_size, dtype=None):
       tfp.layers.DistributionLambda(lambda t: tfd.Independent(
 
           tfd.Normal(loc=t[..., :n],
-                     scale= 1e-6 + 0.001 * tf.nn.softplus(t[..., n:])),
+                     scale= 1e-5 + 0.001 * tf.nn.softplus(t[..., n:])),
           reinterpreted_batch_ndims=1)),
     ])
 
@@ -70,9 +70,9 @@ model_non_linear.compile(optimizer=tf.optimizers.Adam(learning_rate = 0.001),
               loss=nll)
 test = model_non_linear.losses #KL Divergence loss
 model_non_linear.summary()
-model_non_linear.fit(x, y, epochs=1000)
+model_non_linear.fit(x, y, epochs=10)
 
-ensemble_size = 20
+ensemble_size = 1
 
 # plt.figure(0)
 # plt.scatter(x, y, s = 30, alpha = 1, marker = "o", color = 'red', label = 'Data')
