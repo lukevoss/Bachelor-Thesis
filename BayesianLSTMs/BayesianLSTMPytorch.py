@@ -1,4 +1,5 @@
 #import pandas as pd
+from cmath import pi
 import numpy as np
 
 import torch
@@ -14,17 +15,24 @@ import matplotlib.pyplot as plt
 # from sklearn.preprocessing import StandardScaler
 # from collections import deque
 
-NUM_POINTS = 1000
-x = torch.linspace(0, 20, NUM_POINTS)
-y_target = x * np.cos(np.pi * np.sin(x)) + x*x*0.2
-y = y_target + torch.randn(x.shape[0]) * 0.5
-x= x.unsqueeze(dim=1)
-y= y.unsqueeze(dim=1)
+NUM_POINTS_SEQUENCE = 1000
+x = torch.linspace(0, 20*2*pi, NUM_POINTS_SEQUENCE)
+y_target = x*np.sin(x) + x*x*0.1
+y = y_target + torch.randn(x.shape[0]) * 2
 input_size = 1
 output_size = 1
+minima = np.arange(start=0,stop=20*2*pi,step=2*pi)
+y_minima = minima*np.sin(minima) + minima*minima*0.1 
 
-
-
+x = torch.zeros(NUM_POINTS_SEQUENCE,minima.shape[0])
+y = torch.zeros(NUM_POINTS_SEQUENCE,minima.shape[0])
+y_target = torch.zeros(NUM_POINTS_SEQUENCE,minima.shape[0])
+for i, start_sequence in enumerate(minima):
+    stop_sequence = minima[i+1]
+    x[:,i] = torch.linspace(start_sequence, stop_sequence, NUM_POINTS_SEQUENCE)
+    y_target = x*np.sin(x) + x*x*0.1
+    y = y_target + torch.randn(x.shape[0]) * 2
+    
 
 @variational_estimator
 class BayesianNN(nn.Module):
@@ -37,7 +45,7 @@ class BayesianNN(nn.Module):
         x_, _ = self.lstm_1(x)
         
         #gathering only the latent end-of-sequence for the linear layer
-        x_ = x_[:, -1, :]
+        #x_ = x_[:, -1, :]
         x_ = self.linear(x_)
         return x_
 
@@ -63,9 +71,19 @@ for epoch in range(epochs):
     print("Epoch %d/%d" % (epoch+1, epochs))
         
 
+ensemble_size = 100
+preds = [bayes_network(x.to(device)) for i in range(ensemble_size)]
+preds_mean = torch.stack(preds)
+means = preds_mean.mean(axis=0).cpu().detach().numpy()
+stds = preds_mean.std(axis=0).cpu().detach().numpy()
+y_upper = means + (2 * stds)
+y_lower = means - (2 * stds)
 plt.figure(0)
 plt.scatter(x, y, s = 30, alpha = 1, marker = "o", color = 'red', label = 'Data')
 plt.plot(x,y_target, linestyle = 'dashed', color = 'black', linewidth = 3, label = 'Target function')
+plt.plot(minima,y_minima, marker='o', color = 'green', label = 'minima')
+# plt.plot(x, means, color= 'cornflowerblue', alpha=0.8, linewidth = 3, label='learned model $\mu$')
+# plt.fill_between(x[:,0], y_upper[:,0], y_lower[:,0], alpha = 0.4, color='skyblue', label='Standard Deviation')
 plt.legend()
 plt.show()
 
