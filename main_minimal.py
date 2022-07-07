@@ -23,7 +23,7 @@ def train(model, train_loader, batch_size, n_step, imsize, criterion, optimizer,
       # ===================forward=====================
       lstm = model(img)
       output = model.backend(lstm)
-      output = output.view(-1,1,imsize,imsize)
+      output = output.view(-1,1,imsize,imsize) #changes back to 15 x 15
       loss = criterion(output, dose)
       # ===================backward====================
       for param in model.parameters():

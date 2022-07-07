@@ -10,23 +10,29 @@ import os
 import time
 import scipy.io
 
-def train(model, train_loader, batch_size, n_step, imsize, criterion, optimizer, epoch, num_epochs, device):
+def train(bayesian_network, train_loader, batch_size, n_step, imsize, criterion, optimizer, epoch, num_epochs, device, length_data):
   
   allLoss = []
   
-  model.train()
+  bayesian_network.train()
 
   for ii, data in enumerate(train_loader):
       img, dose = data
+      
       img = Variable(img.view(batch_size * n_step, -1)).to(device)
       dose = Variable(dose.view(-1,1,imsize,imsize)).to(device)
       # ===================forward=====================
-      lstm = model(img)
-      output = model.backend(lstm)
+      lstm = bayesian_network(img)
+      output = bayesian_network.backend(lstm)
       output = output.view(-1,1,imsize,imsize)
-      loss = criterion(output, dose)
+      loss = bayesian_network.sample_elbo(inputs=output.to(device),
+                               labels=dose.to(device),
+                               criterion=criterion,
+                               sample_nbr=1,
+                               complexity_cost_weight=1/length_data)
+      #criterion(output, dose) #TODO sample Elbo
       # ===================backward====================
-      for param in model.parameters():
+      for param in bayesian_network.parameters():
         param.grad = None
       loss.backward()
       optimizer.step()
@@ -39,10 +45,10 @@ def train(model, train_loader, batch_size, n_step, imsize, criterion, optimizer,
   
   return allLoss, img, dose, output.cpu().data
 
-def test(model, test_loader, batch_size, n_step, imsize, criterion, device):
+def test(bayesian_network, test_loader, batch_size, n_step, imsize, criterion, device, length_data):
   
   allLoss = []
-  model.eval()
+  bayesian_network.eval()
   with torch.no_grad():
     for ii, data in enumerate(test_loader):
       
@@ -50,10 +56,15 @@ def test(model, test_loader, batch_size, n_step, imsize, criterion, device):
       img = Variable(img.view(batch_size * n_step, -1)).to(device)
       dose = Variable(dose.view(-1,1,imsize,imsize)).to(device)
       # ===================forward=====================
-      lstm = model(img)
-      output = model.backend(lstm)
+      lstm = bayesian_network(img)
+      output = bayesian_network.backend(lstm)
       output = output.view(-1,1,imsize,imsize)
-      loss = criterion(output, dose)
+      loss = bayesian_network.sample_elbo(inputs=output.to(device),
+                               labels=dose.to(device),
+                               criterion=criterion,
+                               sample_nbr=1,
+                               complexity_cost_weight=1/length_data)
+      # loss = criterion(output, dose)
       allLoss.append(loss.item())
     
     print('test loss:{:.9f}'.format(np.sum(allLoss)/len(allLoss)))
@@ -120,15 +131,16 @@ def main():
   try:
     loss_train, loss_test = [], []
 
-    model = DoseRNN(batch_size, n_neuron, n_step, imsize, n_layer).to(device)
+    bayesian_network = DoseRNN(batch_size, n_neuron, n_step, imsize, n_layer).to(device)
     criterion = nn.MSELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr = learning_rate)
+    optimizer = torch.optim.Adam(bayesian_network.parameters(), lr = learning_rate)
     tt = time.time()
+    
     for epoch in range(num_epochs):
-      loss, img_t,dose_t, output_t= train(model, train_loader, batch_size, n_step, imsize, criterion, optimizer, epoch, num_epochs, device)
+      loss, img_t,dose_t, output_t= train(bayesian_network, train_loader, batch_size, n_step, imsize, criterion, optimizer, epoch, num_epochs, device, len(dd_train))
       loss_train.append(loss) 
       #loss_train.append(loss.detach) #TODO Speed up?
-      loss, img, dose, output = test(model, test_loader, batch_size, n_step, imsize, criterion, device)
+      loss, img, dose, output = test(bayesian_network, test_loader, batch_size, n_step, imsize, criterion, device, len(dd_test))
       loss_test.append(loss) 
       #loss_test.append(loss.detach) #TODO Speed up?
 
@@ -136,7 +148,7 @@ def main():
   except KeyboardInterrupt:
 
     pass
-  postprocessing(model, loss_train, loss_test, description, 'LSTM', 'modelarch')
+  postprocessing(bayesian_network, loss_train, loss_test, description, 'LSTM', 'bayesian_networkarch')
 
   # %% plotting some results
 
@@ -149,8 +161,8 @@ def main():
     img = Variable(img.view(batch_size * n_step, -1)).to(device)
     dose = Variable(dose.view(-1,1,imsize,imsize)).to(device)
 
-    lstm = model(img)
-    output = model.backend(lstm)
+    lstm = bayesian_network(img)
+    output = bayesian_network.backend(lstm)
     output = output.view(-1,1,imsize,imsize)
     output = output.cpu().data
 
