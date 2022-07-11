@@ -30,7 +30,7 @@ def train(bayesian_network, train_loader, batch_size, n_step, imsize, criterion,
       loss = bayesian_network.sample_elbo(inputs=output.to(device),
                                labels=dose.to(device),
                                criterion=criterion,
-                               sample_nbr=1,
+                               sample_nbr=3,
                                complexity_cost_weight=1/length_data)
       #output = output.view(-1,1,imsize,imsize)
       #dose = dose.view(-1,1,imsize,imsize)
@@ -68,7 +68,7 @@ def test(bayesian_network, test_loader, batch_size, n_step, imsize, criterion, d
       loss = bayesian_network.sample_elbo(inputs=output.to(device),
                                labels=dose.to(device),
                                criterion=criterion,
-                               sample_nbr=1,
+                               sample_nbr=3,
                                complexity_cost_weight=1/length_data)
       #output = output.view(-1,1,imsize,imsize)
       #dose = dose.view(-1,1,imsize,imsize)
@@ -120,7 +120,7 @@ def main():
   n_step = 80 # how long the sequence is
   imsize = 15 # imsize * imsize is the size of each slice in the sequence
 
-  num_epochs = 5
+  num_epochs = 40
   learning_rate =  1e-5
 
   n_layer = 1 # number of layers in LSTM/RNN
