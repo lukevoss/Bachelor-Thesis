@@ -25,11 +25,15 @@ def train(bayesian_network, train_loader, batch_size, n_step, imsize, criterion,
       lstm = bayesian_network(img)
       output = bayesian_network.backend(lstm)
       output = output.view(-1,1,imsize,imsize)
+      #output = output.view(batch_size * n_step, -1)
+      #dose = dose.view(batch_size * n_step,-1)
       loss = bayesian_network.sample_elbo(inputs=output.to(device),
                                labels=dose.to(device),
                                criterion=criterion,
                                sample_nbr=1,
                                complexity_cost_weight=1/length_data)
+      #output = output.view(-1,1,imsize,imsize)
+      #dose = dose.view(-1,1,imsize,imsize)
       #criterion(output, dose) #TODO sample Elbo
       # ===================backward====================
       for param in bayesian_network.parameters():
@@ -59,11 +63,15 @@ def test(bayesian_network, test_loader, batch_size, n_step, imsize, criterion, d
       lstm = bayesian_network(img)
       output = bayesian_network.backend(lstm)
       output = output.view(-1,1,imsize,imsize)
+      #output = output.view(batch_size * n_step, -1)
+      #dose = dose.view(batch_size * n_step,-1)
       loss = bayesian_network.sample_elbo(inputs=output.to(device),
                                labels=dose.to(device),
                                criterion=criterion,
                                sample_nbr=1,
                                complexity_cost_weight=1/length_data)
+      #output = output.view(-1,1,imsize,imsize)
+      #dose = dose.view(-1,1,imsize,imsize)
       # loss = criterion(output, dose)
       allLoss.append(loss.item())
     
@@ -78,7 +86,7 @@ def prepare_directory():
   if not os.path.exists('./out'):
     os.mkdir('./out')
 
-  dirnum = 7 # attempt number, to avoid over writing data
+  dirnum = 11 # attempt number, to avoid over writing data
   description = 'attempt{}'.format(dirnum)
 
   # creating the output folder
@@ -108,7 +116,7 @@ def main():
       }
 
 
-  batch_size = 100
+  batch_size = 1
   n_step = 80 # how long the sequence is
   imsize = 15 # imsize * imsize is the size of each slice in the sequence
 
@@ -120,6 +128,9 @@ def main():
 
   dd_train = nishDataset(**params, group = 'train')
   dd_test = nishDataset(**params, group = 'test')
+
+  # ds = torch.utils.data.TensorDataset(x, y)
+  # ds = torch.utils.data.TensorDataset(x, y)
     
   train_loader = torch.utils.data.DataLoader(dd_train, shuffle = True, batch_size=batch_size, drop_last = True, pin_memory=False)
   test_loader = torch.utils.data.DataLoader(dd_test, shuffle = True, batch_size=batch_size, drop_last = True, pin_memory=False)

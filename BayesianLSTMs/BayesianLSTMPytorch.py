@@ -23,6 +23,9 @@ input_size = 1
 output_size = 1
 minima = np.arange(start=0,stop=20*2*pi,step=2*pi)
 y_minima = minima*np.sin(minima) + minima*minima*0.1 
+for i in range(20):
+    if i == 0:
+        x=torch.linspace
 
 x = torch.zeros(NUM_POINTS_SEQUENCE,minima.shape[0])
 y = torch.zeros(NUM_POINTS_SEQUENCE,minima.shape[0])

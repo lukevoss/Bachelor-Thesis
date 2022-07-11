@@ -2,7 +2,6 @@
 import torch
 import torch.nn as nn
 import numpy as np
-import torch.multiprocessing as mp
 from torch.autograd import Variable
 import matplotlib.pyplot as plt
 from Externals_minimal import nishDataset, postprocessing, DoseRNN
@@ -67,7 +66,7 @@ def prepare_directory():
   if not os.path.exists('./out'):
     os.mkdir('./out')
 
-  dirnum = 7 # attempt number, to avoid over writing data
+  dirnum = 10 # attempt number, to avoid over writing data
   description = 'attempt{}'.format(dirnum)
 
   # creating the output folder
@@ -97,7 +96,7 @@ def main():
       }
 
 
-  batch_size = 100
+  batch_size = 1
   n_step = 80 # how long the sequence is
   imsize = 15 # imsize * imsize is the size of each slice in the sequence
 
