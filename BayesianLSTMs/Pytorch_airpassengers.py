@@ -52,6 +52,8 @@ months = np.arange(start=0, stop=len(y),step = 1)
 train_months = np.arange(start=0,stop=train_size,step=1)
 test_months = np.arange(start=train_size, stop=train_size+test_size, step=1)
 
+ds = torch.utils.data.TensorDataset(trainX, trainY)
+dataloader_train = torch.utils.data.DataLoader(ds, batch_size=8, shuffle=False)
 
 #build model
 @variational_estimator           
@@ -75,6 +77,7 @@ class BayesianNN(nn.Module):
         
         # Propagate input through LSTM
         lstm_out, (h_out, _) = self.lstm(x)
+        lstm_out = lstm_out[:, -1, :]
         #lstm_out, self.hidden = self.lstm(x)
         #h_out = h_out.view(-1, self.hidden_size)
 
@@ -83,11 +86,11 @@ class BayesianNN(nn.Module):
         return out
 
 # Training
-num_epochs = 2000
-learning_rate = 0.01
+num_epochs = 1500
+learning_rate = 0.002
 
 input_size = 1
-hidden_size = 2
+hidden_size = 10
 num_layers = 1
 
 num_classes = 1
@@ -100,22 +103,25 @@ optimizer = torch.optim.Adam(bayesian_network.parameters(), lr=learning_rate)
 
 # Train the model
 for epoch in range(num_epochs):
-    outputs = bayesian_network(trainX)
-    optimizer.zero_grad()
-    # obtain the loss function
-    loss = bayesian_network.sample_elbo(inputs=outputs,
-                        labels=trainY.view(-1,1,1),
-                        criterion=criterion, 
-                        sample_nbr=3,
-                        complexity_cost_weight=1/x.shape[0])
-    loss.backward()
-    
-    optimizer.step()
-    if epoch % 100 == 0:
-      print("Epoch: %d, loss: %1.5f" % (epoch, loss.item()))
+    for i, (datapoints, labels) in enumerate(dataloader_train):
+        optimizer.zero_grad()
+
+        # obtain the loss function
+        loss = bayesian_network.sample_elbo(inputs=datapoints,
+                            labels=labels,
+                            criterion=criterion, 
+                            sample_nbr=3,
+                            complexity_cost_weight=1/x.shape[0])
+        loss.backward()
+        
+        optimizer.step()
+
+    if epoch%250==0:
+            preds_test = bayesian_network(testX)[:,0].unsqueeze(1)
+            loss_test = criterion(preds_test, testY)
+            print("Iteration: {} Val-loss: {:.4f}".format(str(epoch), loss_test))
 
 bayesian_network.eval()
-#train_predict = bayesian_network(testX)
 
 
 dataY_plot = dataY.data.numpy()
@@ -140,7 +146,7 @@ ensemble_size = 5
 # y_lower = means - (2 * stds)
 for i in range(ensemble_size):
     prediction = bayesian_network(testX)
-    prediction = prediction[:, 0, :]
+    #prediction = prediction[:, 0, :]
     prediction= prediction.data.numpy()
     prediction = sc.inverse_transform(prediction)
     plt.plot(test_months, prediction, color= 'cornflowerblue', alpha=0.8, linewidth = 3, label='Learned Model')
