@@ -4,7 +4,9 @@ import pandas as pd
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
-from sklearn.preprocessing import MinMaxScaler
+
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
 
 from blitz.modules import BayesianLSTM
 from blitz.utils import variational_estimator
@@ -25,11 +27,12 @@ def sliding_windows(data, seq_length):
         _y = data[i+seq_length]
         x.append(_x)
         y.append(_y)
-
-    return np.array(x),np.array(y)
+    x = torch.tensor(x).float()
+    y = torch.tensor(y).float()
+    return x,y
 
 #preprocessing data
-sc = MinMaxScaler()
+sc = StandardScaler()
 training_data = sc.fit_transform(training_set)
 
 seq_length = 4
@@ -39,21 +42,26 @@ x, y = sliding_windows(training_data, seq_length)
 train_size = int(len(y) * 0.7)
 test_size = len(y) - train_size
 
-dataX = Variable(torch.Tensor(np.array(x)))
-dataY = Variable(torch.Tensor(np.array(y)))
+trainX, testX, trainY, testY = train_test_split(x,
+                                                    y,
+                                                    test_size=.3,
+                                                    random_state=42,
+                                                    shuffle=False)
+# dataX = Variable(torch.Tensor(np.array(x)))
+# dataY = Variable(torch.Tensor(np.array(y)))
 
-trainX = Variable(torch.Tensor(np.array(x[0:train_size])))
-trainY = Variable(torch.Tensor(np.array(y[0:train_size])))
+# trainX = Variable(torch.Tensor(np.array(x[0:train_size])))
+# trainY = Variable(torch.Tensor(np.array(y[0:train_size])))
 
-testX = Variable(torch.Tensor(np.array(x[train_size:len(x)])))
-testY = Variable(torch.Tensor(np.array(y[train_size:len(y)])))
+# testX = Variable(torch.Tensor(np.array(x[train_size:len(x)])))
+# testY = Variable(torch.Tensor(np.array(y[train_size:len(y)])))
 
 months = np.arange(start=0, stop=len(y),step = 1)
 train_months = np.arange(start=0,stop=train_size,step=1)
 test_months = np.arange(start=train_size, stop=train_size+test_size, step=1)
 
 ds = torch.utils.data.TensorDataset(trainX, trainY)
-dataloader_train = torch.utils.data.DataLoader(ds, batch_size=8, shuffle=False)
+dataloader_train = torch.utils.data.DataLoader(ds, batch_size=8, shuffle=True)
 
 #build model
 @variational_estimator           
@@ -86,8 +94,8 @@ class BayesianNN(nn.Module):
         return out
 
 # Training
-num_epochs = 1500
-learning_rate = 0.002
+num_epochs = 1000
+learning_rate = 0.001
 
 input_size = 1
 hidden_size = 10
@@ -124,7 +132,7 @@ for epoch in range(num_epochs):
 bayesian_network.eval()
 
 
-dataY_plot = dataY.data.numpy()
+dataY_plot = y.data.numpy()
 dataY_plot = sc.inverse_transform(dataY_plot)
 
 plt.plot(dataY_plot, linestyle = 'dashed', color = 'black', linewidth = 3, label = 'Ground Truth')
