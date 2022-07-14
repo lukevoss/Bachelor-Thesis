@@ -43,7 +43,7 @@ trainX, testX, trainY, testY = train_test_split(x,
                                                     y,
                                                     test_size=.3,
                                                     random_state=42,
-                                                    shuffle=False)#Solved: Hier lag Fehler
+                                                    shuffle=False)
 
 #70% Training 30% Testing
 train_size = int(len(y) * 0.7)
