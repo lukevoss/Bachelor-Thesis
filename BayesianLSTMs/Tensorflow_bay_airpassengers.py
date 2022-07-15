@@ -4,7 +4,10 @@ import matplotlib.pyplot as plt
 from pandas import read_csv
 import math
 import tensorflow as tf
+import edward2 as ed
 
+#from BayesianLSTMs.BayesianLSTM import BayesianLSTMCell
+#from BayesianLSTMs.utils import variationalPosterior
 from keras.models import Sequential
 from keras.layers import Dense
 from keras.layers import LSTM
@@ -13,6 +16,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 
 
+epochs = 1000
 
 #Import
 training_set = pd.read_csv('airline-passengers.csv')#in current working directory
@@ -33,7 +37,7 @@ def sliding_windows(data, seq_length):
     return np.array(x),np.array(y)
 
 #preprocessing data
-sc = MinMaxScaler()
+sc = StandardScaler()
 training_data = sc.fit_transform(training_set)
 
 seq_length = 4
@@ -55,16 +59,36 @@ test_months = np.arange(start=train_size, stop=train_size+test_size, step=1)
 
 y_plot = sc.inverse_transform(y)
 
-model = Sequential([
-    tf.keras.layers.LSTM(2),
-    Dense(1)   
-])
+# num_examples = 2
+# num_timesteps = 3
+# input_dim = 4
+# rnn_dim = 10
 
+# inputs = tf.random.normal([num_examples, num_timesteps, input_dim])
+# labels = tf.random.normal([num_examples])
+lstm_dim = 2
+cell = ed.layers.LSTMCellReparameterization(lstm_dim)
+model = tf.keras.Sequential([
+  tf.keras.layers.RNN(cell),
+  tf.keras.layers.Dense(1)])
+optimizer = tf.keras.optimizers.Adam(0.001)
 
-model.compile(loss='mean_squared_error', optimizer=tf.optimizers.Adam(learning_rate = 0.001))
-model.fit(trainX, trainY, epochs=1000, batch_size=8)
+for epoch in range(epochs):
+  with tf.GradientTape() as tape:
+    outputs = model(trainX)
+    nll = tf.reduce_mean((trainY-outputs)**2)
+    kl = sum(model.losses)
+    loss = nll + kl
+  grads = tape.gradient(loss, model.variables)
+  grads_and_vars = zip(grads, model.variables)
+  optimizer.apply_gradients(grads_and_vars)
+  #print(f"Loss at step {epoch}: {loss}")
+  if epoch%100==0:
+    print(f"Loss at step {epoch}: {loss}")
+# model.compile(loss='mean_squared_error', optimizer=tf.optimizers.Adam(learning_rate = 0.001))
+# model.fit(trainX, trainY, epochs=1000, batch_size=8)
 
-testPredict = model.predict(testX)
+testPredict = model(testX)
 testPredict = sc.inverse_transform(testPredict)
 
 plt.plot(y_plot, linestyle = 'dashed', color = 'black', linewidth = 3, label = 'Ground Truth')

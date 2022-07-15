@@ -1,81 +1,176 @@
-import numpy as np # linear algebra
-import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
-import matplotlib.pyplot as plt
-from pandas import read_csv
-import math
-from keras.models import Sequential
-from keras.layers import Dense
-from keras.layers import LSTM
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.metrics import mean_squared_error
+#sentiment analysis using multilayer RNN (LSTM) twitter
+import tensorflow as tf
+
+from BayesianLSTMs.BayesianLSTM import BayesianLSTMCell
+from BayesianLSTMs.utils import variationalPosterior
+from tensorflow_probability.python.distributions import Normal
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 
-df = pd.read_csv('airline-passengers.csv')#,skipfooter=5)
+class SentimentAnalysisMultiLayerLSTM:
 
-dataset = df.iloc[:,1].values
+    def __init__(self, training):
+        self.LSTM_KL=0
+        self.embedding_dim = 300  # the number of hidden units in each RNN
+        self.keep_prob = 0.5
+        self.batch_size = 512
+        self.lstm_sizes = [128, 64]  # number hidden layer in each LSTM
+        self.num_classes = 2
+        self.max_sequence_length = 100
+        self.prior=(0,1) #univariator prior
+        self.isTraining=training
 
-dataset = dataset.reshape(-1,1)
-dataset = dataset.astype('float32')
-dataset.shape
 
-scaler = MinMaxScaler(feature_range=(0,1))
-dataset = scaler.fit_transform(dataset)
-train_size = int(len(dataset)*0.50)
-test_size = len(dataset) - train_size
-train = dataset[0:train_size,:]
-test = dataset[train_size:len(dataset),:]
+        with tf.variable_scope('rnn_i/o'):
+            # use None for batch size and dynamic sequence length
+            self.inputs = tf.placeholder(tf.float32, shape=[None, None, self.embedding_dim])
+            self.groundtruths = tf.placeholder(tf.float32, shape=[None, self.num_classes])
 
-timestamp=10
-dataX = []
-dataY = []
-for i in range(len(train)-timestamp-1):
-    a = train[i:(i+timestamp),0]
-    dataX.append(a)
-    dataY.append(train[i+timestamp,0])
-trainX = np.array(dataX)
-trainY = np.array(dataY)
-timestep=10
-dataX = []
-dataY = []
-for i in range(len(test)-timestamp-1):
-    a = test[i:(i+timestamp),0]
-    dataX.append(a)
-    dataY.append(test[i+timestamp,0])
-testX = np.array(dataX)
-testY = np.array(dataY)
+        with tf.variable_scope('rnn_cell'):
+            self.initial_state, self.final_lstm_outputs, self.final_state, self.cell = self.build_lstm_layers(self.lstm_sizes, self.inputs,self.keep_prob, self.batch_size)
 
-trainX = np.reshape(trainX,(trainX.shape[0],1,trainX.shape[1]))
-testX = np.reshape(testX,(testX.shape[0],1,testX.shape[1]))
 
-model = Sequential()
-model.add(LSTM(10, input_shape=(1, timestamp))) # 10 lstm neuron(block)
-model.add(Dense(1))
-model.compile(loss='mean_squared_error', optimizer='adam')
-model.fit(trainX, trainY, epochs=50, batch_size=1)
 
-trainPredict = model.predict(trainX)
-testPredict = model.predict(testX)
+            self.softmax_w, self.softmax_w_mean, self.softmax_w_std=  variationalPosterior((self.lstm_sizes[-1], self.num_classes), "softmax_w", self.prior, self.isTraining)
+            self.softmax_b, self.softmax_b_mean, self.softmax_b_std = variationalPosterior((self.num_classes), "softmax_b", self.prior, self.isTraining)
+            self.logits=tf.nn.xw_plus_b(self.final_lstm_outputs,  self.softmax_w,self.softmax_b)
 
-trainPredict = scaler.inverse_transform(trainPredict)
-trainY = scaler.inverse_transform([trainY])
-testPredict = scaler.inverse_transform(testPredict)
-testY = scaler.inverse_transform([testY])
+        with tf.variable_scope('rnn_loss', reuse=tf.AUTO_REUSE):
 
-trainScore = math.sqrt(mean_squared_error(trainY[0], trainPredict[:,0]))
-print('Train Score: %.2f RMSE' % (trainScore))
-testScore = math.sqrt(mean_squared_error(testY[0], testPredict[:,0]))
-print('Test Score: %.2f RMSE' % (testScore))
+            if (self.isTraining):
+                self.KL=0.
+                # use cross_entropy as class loss^6
+                self.loss = tf.losses.softmax_cross_entropy(onehot_labels=self.groundtruths, logits=self.logits)
+                self.KL=tf.add_n(tf.get_collection("KL_layers"), "KL")
 
-trainPredictPlot = np.empty_like(dataset)
-trainPredictPlot[:, :] = np.nan
-trainPredictPlot[timestamp:len(trainPredict)+timestamp, :] = trainPredict
+            self.cost=(self.loss+self.KL)/self.batch_size  #the total cost need to divide by batch size
+            self.optimizer = tf.train.AdamOptimizer(0.02).minimize(self.loss)
 
-testPredictPlot = np.empty_like(dataset)
-testPredictPlot[:, :] = np.nan
-testPredictPlot[len(trainPredict)+(timestamp*2)+1:len(dataset)-1, :] = testPredict
+        #with tf.variable_scope('rnn_accuracy'):
+            # self.accuracy = tf.contrib.metrics.accuracy(labels=tf.argmax(self.groundtruths, axis=1), predictions=self.prediction)
 
-plt.plot(scaler.inverse_transform(dataset))
-plt.plot(trainPredictPlot)
-plt.plot(testPredictPlot)
-plt.show()
+        self.sess = tf.Session()
+        self.sess.run(tf.global_variables_initializer())  # don't forget to initial all variables
+        self.saver = tf.train.Saver()  # a saver is for saving or restoring your trained weight
 
+        print("Completed creating the graph")
+
+    def train(self, batch_x, batch_y, state):
+
+        fd = {}
+        fd[self.inputs] = batch_x
+        fd[self.groundtruths] = batch_y
+        fd[self.initial_state] = state
+        # feed in input and groundtruth to get loss and update the weight via Adam optimizer
+        loss, accuracy, final_state, _ = self.sess.run([self.loss, self.accuracy, self.final_state, self.optimizer], fd)
+
+        return loss, accuracy, final_state
+
+    def test(self, batch_x, batch_y, batch_size):
+
+        """
+         NEED TO RE-WRITE this function interface by adding the state
+        :param batch_x:
+        :param batch_y:
+        :return
+        """
+        # restore the model
+
+        # with tf.Session() as sess:
+        #    model=model.restore();
+
+        test_state = model.cell.zero_state(batch_size, tf.float32)
+        fd = {}
+        fd[self.inputs] = batch_x
+        fd[self.groundtruths] = batch_y
+        fd[self.initial_state] = test_state
+        prediction, accuracy = self.sess.run([self.prediction, self.accuracy], fd)
+
+        return prediction, accuracy
+
+    def save(self, e):
+        self.saver.save(self.sess, 'model/rnn/rnn_%d.ckpt' % (e + 1))
+
+    def restore(self, e):
+        self.saver.restore(self.sess, 'model/rnn/rnn_%d.ckpt' % (e))
+
+    def build_lstm_layers(self, lstm_sizes, inputs, keep_prob_, batch_size):
+        """
+        Create the LSTM layers
+        inputs: array containing size of hidden layer for each lstm,
+                input_embedding, for the shape batch_size, sequence_length, emddeding dimension [None, None, 384],
+                None and None are to handle variable batch size and variable sequence length
+                keep_prob for the dropout and batch_size
+        outputs: initial state for the RNN (lstm) : tuple of [(batch_size, hidden_layer_1), (batch_size, hidden_layer_2)]
+                 outputs of the RNN [Batch_size, sequence_length, last_hidden_layer_dim]
+                 RNN cell: tensorflow implementation of the RNN cell
+                 final state: tuple of [(batch_size, hidden_layer_1), (batch_size, hidden_layer_2)]
+        """
+        self.lstms=[]
+        for i in range (0,len(lstm_sizes)):
+            self.lstms.append(BayesianLSTMCell(lstm_sizes[i], self.prior, self.isTraining, 'lstm'+str(i)))
+
+        # Stack up multiple LSTM layers, for deep learning
+        cell = tf.contrib.rnn.MultiRNNCell(self.lstms)
+        # Getting an initial state of all zeros
+
+        initial_state = cell.zero_state(batch_size, tf.float32)
+        # perform dynamic unrolling of the network, for variable
+        #lstm_outputs, final_state = tf.nn.dynamic_rnn(cell, embed_input, initial_state=initial_state)
+
+        # we avoid dynamic RNN, as this produces while loop errors related to gradient checking
+        if True:
+            outputs = []
+            state = initial_state
+            with tf.variable_scope("RNN"):
+                for time_step in range(self.max_sequence_length):
+                    if time_step > 0: tf.get_variable_scope().reuse_variables()
+                    (cell_output, state) = cell(inputs[:, time_step, :], state)
+                    outputs.append(cell_output)
+
+        final_lstm_outputs = cell_output
+        final_state = state
+        #outputs=tf.reshape(tf.concat(1, outputs), [-1, self.embedding_dim])
+
+
+        return initial_state, final_lstm_outputs, final_state, cell
+
+
+
+if __name__ == '__main__':
+
+    # hyperparameter of our network
+    EPOCHS = 20
+    tf.reset_default_graph()
+    model = SentimentAnalysisMultiLayerLSTM(training=True)
+
+
+    """
+    train_data = get_twets_data()
+    n_train = len(train_data)
+    BATCH_SIZE = model.batch_size
+    print("BATCH SIZE : " + str(BATCH_SIZE))
+    rec_loss = []
+    for epoch in range(EPOCHS):
+        state = model.sess.run([model.initial_state])
+        train_data = train_data.sample(frac=1).reset_index(drop=True)
+        loss_train = 0
+        accuracy_train = 0
+        for idx in range(0, n_train, BATCH_SIZE):
+            BATCH_X, BATCH_Y = get_training_batch_twets(train_data[idx:(idx + BATCH_SIZE)], BATCH_SIZE,
+                                                        model.embedding_dim, num_classes=model.num_classes,
+                                                        maxlen=model.max_sequence_length)
+            loss_batch, accuracy_batch, state = model.train(BATCH_X, BATCH_Y, state)
+            loss_train += loss_batch
+            accuracy_train += accuracy_batch
+            print("EPOCH: " + str(epoch) + "BATCH_INDEX:" + str(idx) + "Batch Loss:" + str(
+                loss_batch) + "Batch Accuracy:" + str(accuracy_train))
+        loss_train /= n_train
+        accuracy_train /= n_train
+        model.save(epoch)  # save your model after each epoch
+        rec_loss.append([loss_train, accuracy_train])
+    np.save('./model/rnn/rec_loss.npy', rec_loss)
+    print("Training completed")
+    
+    """

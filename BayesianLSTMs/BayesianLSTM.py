@@ -1,8 +1,7 @@
 import tensorflow as tf
 #from tensorflow.keras.layers import LSTMCell
 from tensorflow.compat.v1.nn.rnn_cell import BasicLSTMCell, LSTMStateTuple, LSTMCell
-from utils import variationalPosterior
-
+from utils import variationalPosterio
 
 class BayesianLSTMCell(LSTMCell):
 

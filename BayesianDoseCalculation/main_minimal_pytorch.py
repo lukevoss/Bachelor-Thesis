@@ -9,6 +9,7 @@ from Externals_minimal_pytorch import nishDataset, postprocessing, DoseRNN
 import os
 import time
 import scipy.io
+#import edward2 as ed
 
 def train(bayesian_network, train_loader, batch_size, n_step, imsize, criterion, optimizer, epoch, num_epochs, device, length_data):
   
@@ -34,7 +35,7 @@ def train(bayesian_network, train_loader, batch_size, n_step, imsize, criterion,
                                complexity_cost_weight=1/length_data)
       #output = output.view(-1,1,imsize,imsize)
       #dose = dose.view(-1,1,imsize,imsize)
-      #criterion(output, dose) #TODO sample Elbo
+      #criterion(output, dose) 
       # ===================backward====================
       for param in bayesian_network.parameters():
         param.grad = None
@@ -116,11 +117,11 @@ def main():
       }
 
 
-  batch_size = 1
+  batch_size = 10
   n_step = 80 # how long the sequence is
   imsize = 15 # imsize * imsize is the size of each slice in the sequence
 
-  num_epochs = 40
+  num_epochs = 5
   learning_rate =  1e-5
 
   n_layer = 1 # number of layers in LSTM/RNN

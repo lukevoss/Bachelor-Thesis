@@ -4,7 +4,7 @@ import pandas as pd
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
 #Import
 training_set = pd.read_csv('airline-passengers.csv')#in current working directory
