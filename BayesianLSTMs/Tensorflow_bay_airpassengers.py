@@ -16,8 +16,6 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 
 
-epochs = 1000
-
 #Import
 training_set = pd.read_csv('airline-passengers.csv')#in current working directory
 
@@ -73,6 +71,7 @@ model = tf.keras.Sequential([
   tf.keras.layers.Dense(1)])
 optimizer = tf.keras.optimizers.Adam(0.001)
 
+epochs = 1000
 for epoch in range(epochs):
   with tf.GradientTape() as tape:
     outputs = model(trainX)
@@ -98,19 +97,19 @@ plt.axvline(x=train_size, c='r', linestyle='--')
 #plot predictions
 ensemble_size = 20
 
-#test_predict = [bayesian_network(testX) for i in range(ensemble_size)]
-# for i in range(ensemble_size):
-#     prediction = test_predict[i] 
-#     prediction= prediction.data.numpy()
-#     prediction = sc.inverse_transform(prediction)
-#     test_predict[i] = prediction
-# test_predict_mean =np.stack(test_predict)
-# means = test_predict_mean.mean(axis=0)
-# stds = test_predict_mean.std(axis=0)
-# y_upper = means + (2 * stds)
-# y_lower = means - (2 * stds)
+test_predict = [model(testX) for i in range(ensemble_size)]
+for i in range(ensemble_size):
+    prediction = test_predict[i] 
+    prediction= prediction.numpy()
+    prediction = sc.inverse_transform(prediction)
+    test_predict[i] = prediction
+test_predict_mean =np.stack(test_predict)
+means = test_predict_mean.mean(axis=0)
+stds = test_predict_mean.std(axis=0)
+y_upper = means + (2 * stds)
+y_lower = means - (2 * stds)
 
-#plt.fill_between(test_months, y_upper[:,0], y_lower[:,0], alpha = 0.4, color='skyblue', label='Standard Deviation')
+plt.fill_between(test_months, y_upper[:,0], y_lower[:,0], alpha = 0.4, color='skyblue', label='Standard Deviation')
 plt.plot(test_months,testPredict, label = 'Prediction')
 plt.suptitle('Time-Series Prediction')
 plt.legend()
