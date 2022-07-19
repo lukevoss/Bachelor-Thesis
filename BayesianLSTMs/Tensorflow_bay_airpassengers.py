@@ -2,19 +2,12 @@ import numpy as np # linear algebra
 import pandas as pd 
 import matplotlib.pyplot as plt
 from pandas import read_csv
-import math
 import tensorflow as tf
 import edward2 as ed
 
-#from BayesianLSTMs.BayesianLSTM import BayesianLSTMCell
-#from BayesianLSTMs.utils import variationalPosterior
-from keras.models import Sequential
-from keras.layers import Dense
-from keras.layers import LSTM
 from sklearn.preprocessing import StandardScaler,MinMaxScaler
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
-
 
 #Import
 training_set = pd.read_csv('airline-passengers.csv')#in current working directory
@@ -37,6 +30,7 @@ def sliding_windows(data, seq_length):
 #preprocessing data
 sc = StandardScaler()
 training_data = sc.fit_transform(training_set)
+#training_data = training_set
 
 seq_length = 4
 x, y = sliding_windows(training_data, seq_length)
@@ -56,6 +50,7 @@ train_months = np.arange(start=0,stop=train_size,step=1)
 test_months = np.arange(start=train_size, stop=train_size+test_size, step=1)
 
 y_plot = sc.inverse_transform(y)
+#y_plot = y
 
 # num_examples = 2
 # num_timesteps = 3
@@ -69,7 +64,7 @@ cell = ed.layers.LSTMCellReparameterization(lstm_dim)
 model = tf.keras.Sequential([
   tf.keras.layers.RNN(cell),
   tf.keras.layers.Dense(1)])
-optimizer = tf.keras.optimizers.Adam(0.001)
+optimizer = tf.keras.optimizers.Adam(0.01)
 
 epochs = 1000
 for epoch in range(epochs):
@@ -77,13 +72,21 @@ for epoch in range(epochs):
     outputs = model(trainX)
     nll = tf.reduce_mean((trainY-outputs)**2)
     kl = sum(model.losses)
-    loss = nll + kl
-  grads = tape.gradient(loss, model.variables)
+    # mse = tf.keras.losses.MeanSquaredError()
+    # loss_train = mse(trainY, outputs) 
+    loss_train = nll + kl #elbo
+  grads = tape.gradient(loss_train, model.variables)
   grads_and_vars = zip(grads, model.variables)
   optimizer.apply_gradients(grads_and_vars)
   #print(f"Loss at step {epoch}: {loss}")
   if epoch%100==0:
-    print(f"Loss at step {epoch}: {loss}")
+    outputs_test = model(testX)
+    # nll_test = tf.reduce_mean((testY-outputs_test)**2)
+    # kl_test = sum(model.losses)
+    mse = tf.keras.losses.MeanSquaredError()
+    loss_test = mse(testY, outputs_test)
+    #loss_test = nll_test + kl_test
+    print("Iteration: {} Val-loss: {:.4f} Train-loss: {:.4f}".format(str(epoch), loss_test, loss_train))
 # model.compile(loss='mean_squared_error', optimizer=tf.optimizers.Adam(learning_rate = 0.001))
 # model.fit(trainX, trainY, epochs=1000, batch_size=8)
 
@@ -95,7 +98,7 @@ plt.scatter(months,y_plot, s = 30, alpha = 1, marker = "o", color = 'red', label
 plt.axvline(x=train_size, c='r', linestyle='--')
 
 #plot predictions
-ensemble_size = 20
+ensemble_size = 40
 
 test_predict = [model(testX) for i in range(ensemble_size)]
 for i in range(ensemble_size):

@@ -6,7 +6,7 @@ import torch.nn as nn
 from torch.autograd import Variable
 
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
 from blitz.modules import BayesianLSTM
 from blitz.utils import variational_estimator
@@ -57,7 +57,7 @@ y_plot = y.data.numpy()
 y_plot = sc.inverse_transform(y_plot)
 
 ds = torch.utils.data.TensorDataset(trainX, trainY)
-dataloader_train = torch.utils.data.DataLoader(ds, batch_size=4, shuffle=True)
+dataloader_train = torch.utils.data.DataLoader(ds, batch_size=20, shuffle=True)
 
 #build model
 @variational_estimator           
@@ -91,7 +91,7 @@ class BayesianNN(nn.Module):
 
 # Training
 num_epochs = 1000
-learning_rate = 0.001
+learning_rate = 0.01
 input_size = 1
 hidden_size = 2
 num_layers = 1
@@ -109,15 +109,17 @@ for epoch in range(num_epochs):
         loss = bayesian_network.sample_elbo(inputs=datapoints,
                             labels=labels,
                             criterion=criterion, 
-                            sample_nbr=7,
+                            sample_nbr=3,
                             complexity_cost_weight=1/x.shape[0])
         loss.backward()
         optimizer.step()
     #Print Test Results
-    if epoch%250==0:
+    if epoch%100==0:
             preds_test = bayesian_network(testX)[:,0].unsqueeze(1)
+            preds_train = bayesian_network(trainX)[:,0].unsqueeze(1)
             loss_test = criterion(preds_test, testY)
-            print("Iteration: {} Val-loss: {:.4f}".format(str(epoch), loss_test))
+            loss_train = criterion(preds_train,trainY)
+            print("Iteration: {} Val-loss: {:.4f} Train-loss: {:.4f}".format(str(epoch), loss_test, loss_train))
 
 
 #Testing and Predicton
