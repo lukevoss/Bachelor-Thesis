@@ -57,7 +57,7 @@ y_plot = y.data.numpy()
 y_plot = sc.inverse_transform(y_plot)
 
 ds = torch.utils.data.TensorDataset(trainX, trainY)
-dataloader_train = torch.utils.data.DataLoader(ds, batch_size=20, shuffle=True)
+dataloader_train = torch.utils.data.DataLoader(ds, batch_size=139, shuffle=True)
 
 #build model
 @variational_estimator           
@@ -82,15 +82,11 @@ class BayesianNN(nn.Module):
         # Propagate input through LSTM
         lstm_out, (h_out, _) = self.lstm(x)
         lstm_out = lstm_out[:, -1, :]
-        #lstm_out, self.hidden = self.lstm(x)
-        #h_out = h_out.view(-1, self.hidden_size)
-
-        #out = self.fc(h_out)
         out = self.fc(lstm_out)
         return out
 
 # Training
-num_epochs = 1000
+num_epochs = 8000
 learning_rate = 0.01
 input_size = 1
 hidden_size = 2
