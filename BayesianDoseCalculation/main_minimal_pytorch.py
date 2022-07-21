@@ -21,11 +21,9 @@ def train(bayesian_network, train_loader, batch_size, n_step, imsize, criterion,
       
       
       img = Variable(img.view(batch_size,n_step,imsize*imsize)).to(device)
-      #dose = Variable(dose).to(device)
       dose = Variable(dose.view(batch_size,n_step,imsize*imsize)).to(device)
       # ===================forward=====================
       output = bayesian_network(img)
-      #output = output.view(batch_size,n_step,imsize,imsize)
       loss = bayesian_network.sample_elbo(inputs=output.to(device),
                                labels=dose.to(device),
                                criterion=criterion,
@@ -55,12 +53,9 @@ def test(bayesian_network, test_loader, batch_size, n_step, imsize, criterion, d
       
       img , dose = data
       img = Variable(img.view(batch_size,n_step,imsize*imsize)).to(device)
-      #dose = Variable(dose).to(device)
       dose = Variable(dose.view(batch_size,n_step,imsize*imsize)).to(device)
       # ===================forward=====================
       output = bayesian_network(img)
-      #output = output.view(batch_size,n_step,imsize,imsize)
-      #TODO: eventuell MSE mit 15x15 statt 225?
       loss = bayesian_network.sample_elbo(inputs=output.to(device),
                                labels=dose.to(device),
                                criterion=criterion,
@@ -161,8 +156,8 @@ def main():
   for i in range(nplot):
     
     img , dose = iter(test_loader).next()
-    img = img[1, ...]#take first batch
-    dose = dose[1, ...]
+    img = img[0, ...]#take first batch
+    dose = dose[0, ...]
     img = Variable(img.view(1,n_step,imsize*imsize)).to(device)
     dose = Variable(dose).to(device)
 

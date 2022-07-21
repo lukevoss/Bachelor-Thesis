@@ -4,7 +4,7 @@ import torch.nn as nn
 import numpy as np
 from torch.autograd import Variable
 import matplotlib.pyplot as plt
-from Externals_minimal import nishDataset, postprocessing, DoseRNN
+from Externals_minimal_test import nishDataset, postprocessing, DoseRNN
 import os
 import time
 import scipy.io
@@ -17,12 +17,11 @@ def train(model, train_loader, batch_size, n_step, imsize, criterion, optimizer,
 
   for ii, data in enumerate(train_loader):
       img, dose = data
-      img = Variable(img.view(batch_size * n_step, -1)).to(device)
-      dose = Variable(dose.view(-1,1,imsize,imsize)).to(device)
+      img = Variable(img.view(batch_size,n_step,imsize*imsize)).to(device)
+      dose = Variable(dose.view(batch_size,n_step,imsize*imsize)).to(device)
       # ===================forward=====================
-      lstm = model(img)
-      output = model.backend(lstm)
-      output = output.view(-1,1,imsize,imsize) #changes back to 15 x 15
+      output = model(img)
+      
       loss = criterion(output, dose)
       # ===================backward====================
       for param in model.parameters():
@@ -46,12 +45,10 @@ def test(model, test_loader, batch_size, n_step, imsize, criterion, device):
     for ii, data in enumerate(test_loader):
       
       img , dose = data
-      img = Variable(img.view(batch_size * n_step, -1)).to(device)
-      dose = Variable(dose.view(-1,1,imsize,imsize)).to(device)
+      img = Variable(img.view(batch_size,n_step,imsize*imsize)).to(device)
+      dose = Variable(dose.view(batch_size,n_step,imsize*imsize)).to(device)
       # ===================forward=====================
-      lstm = model(img)
-      output = model.backend(lstm)
-      output = output.view(-1,1,imsize,imsize)
+      output = model(img)
       loss = criterion(output, dose)
       allLoss.append(loss.item())
     
@@ -96,7 +93,7 @@ def main():
       }
 
 
-  batch_size = 2
+  batch_size = 1
   n_step = 80 # how long the sequence is
   imsize = 15 # imsize * imsize is the size of each slice in the sequence
 
@@ -143,30 +140,19 @@ def main():
   nplot = 10 # number of test data to plot
 
   for i in range(nplot):
-    
     img , dose = iter(test_loader).next()
-
-    img , dose = iter(test_loader).next()
-    
-    dose = dose[0, ...]
-    dose = dose.unsqueeze(0)
-
-    img = Variable(img.view(batch_size * n_step, -1)).to(device)
-    dose = Variable(dose.view(-1,1,imsize,imsize)).to(device)
-
-    lstm = model(img)
-    output = model.backend(lstm)
-    output = output.view(batch_size,n_step,imsize,imsize)
-    img = img.view(batch_size,n_step,imsize,imsize)
-    output = output[0, ...]#take first batch
-    output = output.view(-1,1,imsize,imsize)
     img = img[0, ...]#take first batch
-    img = img.view(-1,1,imsize,imsize)
-    output = output.cpu().data
+    dose = dose[0, ...]
+    img = Variable(img.view(1,n_step,imsize*imsize)).to(device)
+    dose = Variable(dose).to(device)
 
-    npimg = np.array(img.cpu().view(-1,imsize,imsize))
-    npdose = np.array(dose.cpu()).squeeze(axis = 1)
-    npoutput = np.array(output).squeeze(axis = 1)
+    output = model(img)
+    output = output.view(n_step,imsize,imsize)
+    img = img.view(n_step, imsize, imsize)
+
+    npimg = np.array(img.cpu())
+    npdose = np.array(dose.cpu())
+    npoutput = np.array(output.cpu().data)
     
     slc = int(np.floor(imsize/2))
     

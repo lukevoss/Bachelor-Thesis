@@ -86,7 +86,7 @@ class BayesianNN(nn.Module):
         return out
 
 # Training
-num_epochs = 8000
+num_epochs = 2000
 learning_rate = 0.01
 input_size = 1
 hidden_size = 2
