@@ -35,7 +35,7 @@ def sliding_windows(data, seq_length):
     return np.array(x),np.array(y)
 
 #preprocessing data
-sc = MinMaxScaler()
+sc = StandardScaler()
 training_data = sc.fit_transform(training_set)
 
 seq_length = 4

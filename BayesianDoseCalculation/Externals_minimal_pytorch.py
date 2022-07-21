@@ -43,9 +43,9 @@ class nishDataset(Dataset):
     
 
 @variational_estimator
-class DoseRNN(nn.Module):
+class BayesianDoseLSTM(nn.Module):
     def __init__(self, batch_size, n_neuron, nstep, imsize, nlayer, dropout = 0):
-        super(DoseRNN, self).__init__()
+        super(BayesianDoseLSTM, self).__init__()
         
         self.n_neurons = n_neuron
         self.batch_size = batch_size
@@ -55,14 +55,11 @@ class DoseRNN(nn.Module):
         self.n_layers = nlayer
         self.flat = batch_size * nstep * self.n_inputs
         
-        #self.rnn = nn.RNN(self.n_inputs, self.n_neurons, self.n_layers, nonlinearity = 'relu', dropout = dropout)
+        
         #self.lstm = nn.LSTM(self.n_inputs, self.n_neurons, self.n_layers, dropout = dropout)
         #TODO: Layers
         self.lstm = BayesianLSTM(self.n_inputs, self.n_neurons, prior_sigma_1=1, prior_pi=1, posterior_rho_init=-3.0)
         #TODO: Dropout Layer
-
-
-        
 
 
         self.backend = nn.Sequential(
@@ -81,17 +78,18 @@ class DoseRNN(nn.Module):
 
     def forward(self, x): # x.shape to be ==> n_steps X batch_size X n_inputs
         
-        x = x.view((self.n_steps, self.batch_size, self.n_inputs))
+        #x = x.view((self.n_steps, self.batch_size, self.n_inputs))
         # self.hidden = self.init_hidden()
         
         #lstm_out, self.hidden = self.rnn(x)#, self.hidden)
         lstm_out, self.hidden = self.lstm(x)#, self.hidden)
-
+        #lstm_out.view(-1, self.n_neurons)
+        out = self.backend(lstm_out)
         #gathering only the latent end-of-sequence for the linear layer
         #x_ = x_[:, -1, :]
         #x_ = self.linear(x_)
         
-        return lstm_out.view(-1, self.n_neurons)
+        return out
 
         
 def postprocessing(model, loss_train, loss_test, description, stage, ii = 0):

@@ -66,7 +66,7 @@ def prepare_directory():
   if not os.path.exists('./out'):
     os.mkdir('./out')
 
-  dirnum = 10 # attempt number, to avoid over writing data
+  dirnum = 13 # attempt number, to avoid over writing data
   description = 'attempt{}'.format(dirnum)
 
   # creating the output folder
@@ -96,11 +96,11 @@ def main():
       }
 
 
-  batch_size = 1
+  batch_size = 2
   n_step = 80 # how long the sequence is
   imsize = 15 # imsize * imsize is the size of each slice in the sequence
 
-  num_epochs = 5
+  num_epochs = 10
   learning_rate =  1e-5
 
   n_layer = 1 # number of layers in LSTM/RNN

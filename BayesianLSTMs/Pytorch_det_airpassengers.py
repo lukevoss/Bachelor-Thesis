@@ -66,9 +66,9 @@ class LSTM(nn.Module):
     def forward(self, x):
         
         # Propagate input through LSTM
-        ula, (h_out, _) = self.lstm(x)
+        lstm_out, (h_out, _) = self.lstm(x)
         #lstm_out, self.hidden = self.lstm(x)
-        h_out = h_out.view(-1, self.hidden_size)
+        h_out = h_out.view(-1, self.hidden_size) #warum h_out genommen nicht lstm_out?
 
         out = self.fc(h_out)
         #out = self.fc(lstm_out)

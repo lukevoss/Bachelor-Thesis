@@ -5,11 +5,11 @@ import numpy as np
 import torch.multiprocessing as mp
 from torch.autograd import Variable
 import matplotlib.pyplot as plt
-from Externals_minimal_pytorch import nishDataset, postprocessing, DoseRNN
+from Externals_minimal_pytorch import nishDataset, postprocessing, BayesianDoseLSTM
 import os
 import time
 import scipy.io
-#import edward2 as ed
+
 
 def train(bayesian_network, train_loader, batch_size, n_step, imsize, criterion, optimizer, epoch, num_epochs, device, length_data):
   
@@ -17,25 +17,21 @@ def train(bayesian_network, train_loader, batch_size, n_step, imsize, criterion,
   
   bayesian_network.train()
 
-  for ii, data in enumerate(train_loader):
-      img, dose = data
+  for ii, (img, dose) in enumerate(train_loader):
       
-      img = Variable(img.view(batch_size * n_step, -1)).to(device)
-      dose = Variable(dose.view(-1,1,imsize,imsize)).to(device)
+      
+      img = Variable(img.view(batch_size,n_step,imsize*imsize)).to(device)
+      dose = Variable(dose).to(device)
+      #dose = Variable(dose.view(batch_size,n_step,-1)).to(device)
       # ===================forward=====================
-      lstm = bayesian_network(img)
-      output = bayesian_network.backend(lstm)
-      output = output.view(-1,1,imsize,imsize)
-      #output = output.view(batch_size * n_step, -1)
-      #dose = dose.view(batch_size * n_step,-1)
+      output = bayesian_network(img)
+      output = output.view(batch_size,n_step,imsize,imsize)
       loss = bayesian_network.sample_elbo(inputs=output.to(device),
                                labels=dose.to(device),
                                criterion=criterion,
                                sample_nbr=3,
                                complexity_cost_weight=1/length_data)
-      #output = output.view(-1,1,imsize,imsize)
-      #dose = dose.view(-1,1,imsize,imsize)
-      #criterion(output, dose) 
+      
       # ===================backward====================
       for param in bayesian_network.parameters():
         param.grad = None
@@ -58,22 +54,18 @@ def test(bayesian_network, test_loader, batch_size, n_step, imsize, criterion, d
     for ii, data in enumerate(test_loader):
       
       img , dose = data
-      img = Variable(img.view(batch_size * n_step, -1)).to(device)
-      dose = Variable(dose.view(-1,1,imsize,imsize)).to(device)
+      img = Variable(img.view(batch_size,n_step,imsize*imsize)).to(device)
+      dose = Variable(dose).to(device)
+      #dose = Variable(dose.view(batch_size,n_step,-1)).to(device)
       # ===================forward=====================
-      lstm = bayesian_network(img)
-      output = bayesian_network.backend(lstm)
-      output = output.view(-1,1,imsize,imsize)
-      #output = output.view(batch_size * n_step, -1)
-      #dose = dose.view(batch_size * n_step,-1)
+      output = bayesian_network(img)
+      output = output.view(batch_size,n_step,imsize,imsize)
+      #TODO: eventuell MSE mit 15x15 statt 225?
       loss = bayesian_network.sample_elbo(inputs=output.to(device),
                                labels=dose.to(device),
                                criterion=criterion,
                                sample_nbr=3,
                                complexity_cost_weight=1/length_data)
-      #output = output.view(-1,1,imsize,imsize)
-      #dose = dose.view(-1,1,imsize,imsize)
-      # loss = criterion(output, dose)
       allLoss.append(loss.item())
     
     print('test loss:{:.9f}'.format(np.sum(allLoss)/len(allLoss)))
@@ -87,7 +79,7 @@ def prepare_directory():
   if not os.path.exists('./out'):
     os.mkdir('./out')
 
-  dirnum = 11 # attempt number, to avoid over writing data
+  dirnum = 12 # attempt number, to avoid over writing data
   description = 'attempt{}'.format(dirnum)
 
   # creating the output folder
@@ -117,7 +109,7 @@ def main():
       }
 
 
-  batch_size = 10
+  batch_size = 1
   n_step = 80 # how long the sequence is
   imsize = 15 # imsize * imsize is the size of each slice in the sequence
 
@@ -143,7 +135,7 @@ def main():
   try:
     loss_train, loss_test = [], []
 
-    bayesian_network = DoseRNN(batch_size, n_neuron, n_step, imsize, n_layer).to(device)
+    bayesian_network = BayesianDoseLSTM(batch_size, n_neuron, n_step, imsize, n_layer).to(device)
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(bayesian_network.parameters(), lr = learning_rate)
     tt = time.time()
@@ -169,7 +161,8 @@ def main():
   for i in range(nplot):
     
     img , dose = iter(test_loader).next()
-
+    img = img[1, ...]
+    dose = dose[1, ...]
     img = Variable(img.view(batch_size * n_step, -1)).to(device)
     dose = Variable(dose.view(-1,1,imsize,imsize)).to(device)
 
