@@ -21,11 +21,11 @@ def train(bayesian_network, train_loader, batch_size, n_step, imsize, criterion,
       
       
       img = Variable(img.view(batch_size,n_step,imsize*imsize)).to(device)
-      dose = Variable(dose).to(device)
-      #dose = Variable(dose.view(batch_size,n_step,-1)).to(device)
+      #dose = Variable(dose).to(device)
+      dose = Variable(dose.view(batch_size,n_step,imsize*imsize)).to(device)
       # ===================forward=====================
       output = bayesian_network(img)
-      output = output.view(batch_size,n_step,imsize,imsize)
+      #output = output.view(batch_size,n_step,imsize,imsize)
       loss = bayesian_network.sample_elbo(inputs=output.to(device),
                                labels=dose.to(device),
                                criterion=criterion,
@@ -55,11 +55,11 @@ def test(bayesian_network, test_loader, batch_size, n_step, imsize, criterion, d
       
       img , dose = data
       img = Variable(img.view(batch_size,n_step,imsize*imsize)).to(device)
-      dose = Variable(dose).to(device)
-      #dose = Variable(dose.view(batch_size,n_step,-1)).to(device)
+      #dose = Variable(dose).to(device)
+      dose = Variable(dose.view(batch_size,n_step,imsize*imsize)).to(device)
       # ===================forward=====================
       output = bayesian_network(img)
-      output = output.view(batch_size,n_step,imsize,imsize)
+      #output = output.view(batch_size,n_step,imsize,imsize)
       #TODO: eventuell MSE mit 15x15 statt 225?
       loss = bayesian_network.sample_elbo(inputs=output.to(device),
                                labels=dose.to(device),
@@ -161,19 +161,18 @@ def main():
   for i in range(nplot):
     
     img , dose = iter(test_loader).next()
-    img = img[1, ...]
+    img = img[1, ...]#take first batch
     dose = dose[1, ...]
-    img = Variable(img.view(batch_size * n_step, -1)).to(device)
-    dose = Variable(dose.view(-1,1,imsize,imsize)).to(device)
+    img = Variable(img.view(1,n_step,imsize*imsize)).to(device)
+    dose = Variable(dose).to(device)
 
-    lstm = bayesian_network(img)
-    output = bayesian_network.backend(lstm)
-    output = output.view(-1,1,imsize,imsize)
-    output = output.cpu().data
+    output = bayesian_network(img)
+    output = output.view(n_step,imsize,imsize)
+    img = img.view(n_step, imsize, imsize)
 
-    npimg = np.array(img.cpu().view(-1,imsize,imsize))
-    npdose = np.array(dose.cpu()).squeeze(axis = 1)
-    npoutput = np.array(output).squeeze(axis = 1)
+    npimg = np.array(img.cpu())
+    npdose = np.array(dose.cpu())
+    npoutput = np.array(output.cpu().data)
     
     slc = int(np.floor(imsize/2))
     
