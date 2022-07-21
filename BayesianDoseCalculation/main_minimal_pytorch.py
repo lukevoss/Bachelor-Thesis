@@ -28,7 +28,7 @@ def train(bayesian_network, train_loader, batch_size, n_step, imsize, criterion,
                                labels=dose.to(device),
                                criterion=criterion,
                                sample_nbr=3,
-                               complexity_cost_weight=1/length_data)
+                               complexity_cost_weight=1/10000)
       
       # ===================backward====================
       for param in bayesian_network.parameters():
@@ -60,7 +60,7 @@ def test(bayesian_network, test_loader, batch_size, n_step, imsize, criterion, d
                                labels=dose.to(device),
                                criterion=criterion,
                                sample_nbr=3,
-                               complexity_cost_weight=1/length_data)
+                               complexity_cost_weight=1/10000)# richtig?
       allLoss.append(loss.item())
     
     print('test loss:{:.9f}'.format(np.sum(allLoss)/len(allLoss)))
@@ -74,7 +74,7 @@ def prepare_directory():
   if not os.path.exists('./out'):
     os.mkdir('./out')
 
-  dirnum = 12 # attempt number, to avoid over writing data
+  dirnum = 1 # attempt number, to avoid over writing data
   description = 'attempt{}'.format(dirnum)
 
   # creating the output folder
