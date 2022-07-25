@@ -96,12 +96,12 @@ def main():
       }
 
 
-  batch_size = 2
+  batch_size = 1
   n_step = 80 # how long the sequence is
   imsize = 15 # imsize * imsize is the size of each slice in the sequence
 
-  num_epochs = 1
-  learning_rate =  1e-5
+  num_epochs = 6
+  learning_rate =  1e-2
 
   n_layer = 1 # number of layers in LSTM/RNN
   n_neuron = 1000 # number of neurons in LSTM/RNN

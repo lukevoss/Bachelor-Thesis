@@ -16,6 +16,7 @@ def train(model, train_loader, batch_size, n_step, imsize, criterion, optimizer,
   model.train()
 
   for ii, data in enumerate(train_loader):
+      optimizer.zero_grad()
       img, dose = data
       img = Variable(img.view(batch_size,n_step,imsize*imsize)).to(device)
       dose = Variable(dose.view(batch_size,n_step,imsize*imsize)).to(device)
@@ -25,7 +26,7 @@ def train(model, train_loader, batch_size, n_step, imsize, criterion, optimizer,
       loss = criterion(output, dose)
       # ===================backward====================
       for param in model.parameters():
-        param.grad = None
+        param.grad = None #same as optimizer.zero_grad()?
       loss.backward()
       optimizer.step()
       
@@ -63,7 +64,7 @@ def prepare_directory():
   if not os.path.exists('./out'):
     os.mkdir('./out')
 
-  dirnum = 13 # attempt number, to avoid over writing data
+  dirnum = 2 # attempt number, to avoid over writing data
   description = 'attempt{}'.format(dirnum)
 
   # creating the output folder
@@ -97,7 +98,7 @@ def main():
   n_step = 80 # how long the sequence is
   imsize = 15 # imsize * imsize is the size of each slice in the sequence
 
-  num_epochs = 1
+  num_epochs = 5
   learning_rate =  1e-5
 
   n_layer = 1 # number of layers in LSTM/RNN
@@ -120,14 +121,14 @@ def main():
     model = DoseRNN(batch_size, n_neuron, n_step, imsize, n_layer).to(device)
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr = learning_rate)
+    scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer,gamma = 0.3)
     tt = time.time()
     for epoch in range(num_epochs):
       loss, img_t,dose_t, output_t= train(model, train_loader, batch_size, n_step, imsize, criterion, optimizer, epoch, num_epochs, device)
       loss_train.append(loss) 
-      #loss_train.append(loss.detach) #TODO Speed up?
       loss, img, dose, output = test(model, test_loader, batch_size, n_step, imsize, criterion, device)
       loss_test.append(loss) 
-      #loss_test.append(loss.detach) #TODO Speed up?
+      scheduler.step()
 
     print('elapsed time: {}'.format(time.time() - tt))
   except KeyboardInterrupt:

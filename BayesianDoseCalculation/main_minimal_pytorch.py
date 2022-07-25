@@ -11,7 +11,7 @@ import time
 import scipy.io
 
 
-def train(bayesian_network, train_loader, batch_size, n_step, imsize, criterion, optimizer, epoch, num_epochs, device, length_data):
+def train(bayesian_network, train_loader, batch_size, n_step, imsize, criterion, optimizer, epoch, num_epochs, device):
   
   allLoss = []
   
@@ -19,17 +19,17 @@ def train(bayesian_network, train_loader, batch_size, n_step, imsize, criterion,
 
   for ii, (img, dose) in enumerate(train_loader):
       
-      
+      optimizer.zero_grad()
       img = Variable(img.view(batch_size,n_step,imsize*imsize)).to(device)
       dose = Variable(dose.view(batch_size,n_step,imsize*imsize)).to(device)
       # ===================forward=====================
-      output = bayesian_network(img)
-      loss = bayesian_network.sample_elbo(inputs=output.to(device),
+      #output = bayesian_network(img)
+      loss = bayesian_network.sample_elbo(inputs=img.to(device),#TODO img?
                                labels=dose.to(device),
                                criterion=criterion,
                                sample_nbr=3,
                                complexity_cost_weight=1/10000)
-      
+      #loss = criterion(output, dose)
       # ===================backward====================
       for param in bayesian_network.parameters():
         param.grad = None
@@ -42,7 +42,7 @@ def train(bayesian_network, train_loader, batch_size, n_step, imsize, criterion,
   print('epoch [{}/{}], loss:{:.9f}'
         .format(epoch+1, num_epochs, np.sum(allLoss)/len(allLoss)))
   
-  return allLoss, img, dose, output.cpu().data
+  return allLoss, img, dose
 
 def test(bayesian_network, test_loader, batch_size, n_step, imsize, criterion, device, length_data):
   
@@ -56,11 +56,7 @@ def test(bayesian_network, test_loader, batch_size, n_step, imsize, criterion, d
       dose = Variable(dose.view(batch_size,n_step,imsize*imsize)).to(device)
       # ===================forward=====================
       output = bayesian_network(img)
-      loss = bayesian_network.sample_elbo(inputs=output.to(device),
-                               labels=dose.to(device),
-                               criterion=criterion,
-                               sample_nbr=3,
-                               complexity_cost_weight=1/10000)# richtig?
+      loss = criterion(output, dose)
       allLoss.append(loss.item())
     
     print('test loss:{:.9f}'.format(np.sum(allLoss)/len(allLoss)))
@@ -109,7 +105,7 @@ def main():
   imsize = 15 # imsize * imsize is the size of each slice in the sequence
 
   num_epochs = 5
-  learning_rate =  1e-5
+  starting_learning_rate =  1e-2
 
   n_layer = 1 # number of layers in LSTM/RNN
   n_neuron = 1000 # number of neurons in LSTM/RNN
@@ -132,17 +128,16 @@ def main():
 
     bayesian_network = BayesianDoseLSTM(batch_size, n_neuron, n_step, imsize, n_layer).to(device)
     criterion = nn.MSELoss()
-    optimizer = torch.optim.Adam(bayesian_network.parameters(), lr = learning_rate)
+    optimizer = torch.optim.Adam(bayesian_network.parameters(), lr = starting_learning_rate)
+    scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer,gamma = 0.3)
     tt = time.time()
     
     for epoch in range(num_epochs):
-      loss, img_t,dose_t, output_t= train(bayesian_network, train_loader, batch_size, n_step, imsize, criterion, optimizer, epoch, num_epochs, device, len(dd_train))
+      loss, img_t,dose_t= train(bayesian_network, train_loader, batch_size, n_step, imsize, criterion, optimizer, epoch, num_epochs, device) #output_t gelöscht
       loss_train.append(loss) 
-      #loss_train.append(loss.detach) #TODO Speed up?
       loss, img, dose, output = test(bayesian_network, test_loader, batch_size, n_step, imsize, criterion, device, len(dd_test))
       loss_test.append(loss) 
-      #loss_test.append(loss.detach) #TODO Speed up?
-
+      scheduler.step()
     print('elapsed time: {}'.format(time.time() - tt))
   except KeyboardInterrupt:
 
@@ -151,7 +146,7 @@ def main():
 
   # %% plotting some results
 
-  nplot = 10 # number of test data to plot
+  nplot = 5 # number of test data to plot
 
   for i in range(nplot):
     
@@ -184,7 +179,7 @@ def main():
     image_3 = axs[2].imshow(np.transpose(npoutput[:,slc,:]))
     axs[2].set_title('Estimated dose, Dose Integral = {}'.format(npoutput.sum()))
     fig.colorbar(image_3, ax = axs[2], fraction=0.046, pad=0.04)
-    plt.savefig('{}/2d_{}_{}_{}.png'.format(rootdir, i, learning_rate, n_layer))
+    plt.savefig('{}/2d_{}_{}_{}.png'.format(rootdir, i, starting_learning_rate, n_layer))
     plt.close()
   
       
