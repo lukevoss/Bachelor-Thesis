@@ -96,12 +96,12 @@ def main():
       }
 
 
-  batch_size = 1
+  batch_size = 32
   n_step = 80 # how long the sequence is
   imsize = 15 # imsize * imsize is the size of each slice in the sequence
 
-  num_epochs = 6
-  learning_rate =  1e-2
+  num_epochs = 20
+  learning_rate =  1e-4
 
   n_layer = 1 # number of layers in LSTM/RNN
   n_neuron = 1000 # number of neurons in LSTM/RNN
@@ -123,14 +123,14 @@ def main():
     model = DoseRNN(batch_size, n_neuron, n_step, imsize, n_layer).to(device)
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr = learning_rate)
+    scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer,gamma = 0.9)
     tt = time.time()
     for epoch in range(num_epochs):
       loss, img_t,dose_t, output_t= train(model, train_loader, batch_size, n_step, imsize, criterion, optimizer, epoch, num_epochs, device)
       loss_train.append(loss) 
-      #loss_train.append(loss.detach) #TODO Speed up?
       loss, img, dose, output = test(model, test_loader, batch_size, n_step, imsize, criterion, device)
       loss_test.append(loss) 
-      #loss_test.append(loss.detach) #TODO Speed up?
+      scheduler.step()
 
     print('elapsed time: {}'.format(time.time() - tt))
   except KeyboardInterrupt:

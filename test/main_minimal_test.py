@@ -94,11 +94,11 @@ def main():
       }
 
 
-  batch_size = 1
+  batch_size = 128
   n_step = 80 # how long the sequence is
   imsize = 15 # imsize * imsize is the size of each slice in the sequence
 
-  num_epochs = 5
+  num_epochs = 20
   learning_rate =  1e-5
 
   n_layer = 1 # number of layers in LSTM/RNN
@@ -121,7 +121,7 @@ def main():
     model = DoseRNN(batch_size, n_neuron, n_step, imsize, n_layer).to(device)
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr = learning_rate)
-    scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer,gamma = 0.3)
+    scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer,gamma = 0.9)
     tt = time.time()
     for epoch in range(num_epochs):
       loss, img_t,dose_t, output_t= train(model, train_loader, batch_size, n_step, imsize, criterion, optimizer, epoch, num_epochs, device)

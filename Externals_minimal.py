@@ -51,7 +51,6 @@ class DoseRNN(nn.Module):
         self.n_outputs = imsize**2
         self.n_layers = nlayer
         self.flat = batch_size * nstep * self.n_inputs
-        
         #self.rnn = nn.RNN(self.n_inputs, self.n_neurons, self.n_layers, nonlinearity = 'relu', dropout = dropout)
         self.lstm = nn.LSTM(self.n_inputs, self.n_neurons, self.n_layers, dropout = dropout)
 
@@ -75,7 +74,7 @@ class DoseRNN(nn.Module):
         # self.hidden = self.init_hidden()
         
         #lstm_out, self.hidden = self.rnn(x)#, self.hidden)
-        lstm_out, self.hidden = self.lstm(x)#, self.hidden)
+        lstm_out, self.hidden = self.lstm(x)
         
         return lstm_out.view(-1, self.n_neurons)
 

@@ -24,7 +24,7 @@ def train(bayesian_network, train_loader, batch_size, n_step, imsize, criterion,
       dose = Variable(dose.view(batch_size,n_step,imsize*imsize)).to(device)
       # ===================forward=====================
       #output = bayesian_network(img)
-      loss = bayesian_network.sample_elbo(inputs=img.to(device),#TODO img?
+      loss = bayesian_network.sample_elbo(inputs=img.to(device),
                                labels=dose.to(device),
                                criterion=criterion,
                                sample_nbr=3,
@@ -42,7 +42,7 @@ def train(bayesian_network, train_loader, batch_size, n_step, imsize, criterion,
   print('epoch [{}/{}], loss:{:.9f}'
         .format(epoch+1, num_epochs, np.sum(allLoss)/len(allLoss)))
   
-  return allLoss, img, dose
+  return allLoss
 
 def test(bayesian_network, test_loader, batch_size, n_step, imsize, criterion, device, length_data):
   
@@ -62,7 +62,7 @@ def test(bayesian_network, test_loader, batch_size, n_step, imsize, criterion, d
     print('test loss:{:.9f}'.format(np.sum(allLoss)/len(allLoss)))
     
 
-  return allLoss, img, dose, output.cpu().data
+  return allLoss
 
 def prepare_directory():
   # %% Preparing the folder for the output
@@ -100,11 +100,11 @@ def main():
       }
 
 
-  batch_size = 1
+  batch_size = 32
   n_step = 80 # how long the sequence is
   imsize = 15 # imsize * imsize is the size of each slice in the sequence
 
-  num_epochs = 5
+  num_epochs = 100
   starting_learning_rate =  1e-2
 
   n_layer = 1 # number of layers in LSTM/RNN
@@ -113,8 +113,6 @@ def main():
   dd_train = nishDataset(**params, group = 'train')
   dd_test = nishDataset(**params, group = 'test')
 
-  # ds = torch.utils.data.TensorDataset(x, y)
-  # ds = torch.utils.data.TensorDataset(x, y)
     
   train_loader = torch.utils.data.DataLoader(dd_train, shuffle = True, batch_size=batch_size, drop_last = True, pin_memory=False)
   test_loader = torch.utils.data.DataLoader(dd_test, shuffle = True, batch_size=batch_size, drop_last = True, pin_memory=False)
@@ -129,15 +127,15 @@ def main():
     bayesian_network = BayesianDoseLSTM(batch_size, n_neuron, n_step, imsize, n_layer).to(device)
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(bayesian_network.parameters(), lr = starting_learning_rate)
-    scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer,gamma = 0.3)
+    scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer,gamma = 0.92)
     tt = time.time()
     
     for epoch in range(num_epochs):
-      loss, img_t,dose_t= train(bayesian_network, train_loader, batch_size, n_step, imsize, criterion, optimizer, epoch, num_epochs, device) #output_t gelöscht
+      loss = train(bayesian_network, train_loader, batch_size, n_step, imsize, criterion, optimizer, epoch, num_epochs, device) #output_t gelöscht
       loss_train.append(loss) 
-      loss, img, dose, output = test(bayesian_network, test_loader, batch_size, n_step, imsize, criterion, device, len(dd_test))
+      loss = test(bayesian_network, test_loader, batch_size, n_step, imsize, criterion, device, len(dd_test))
       loss_test.append(loss) 
-      scheduler.step()
+      #scheduler.step()
     print('elapsed time: {}'.format(time.time() - tt))
   except KeyboardInterrupt:
 
@@ -146,7 +144,7 @@ def main():
 
   # %% plotting some results
 
-  nplot = 5 # number of test data to plot
+  nplot = 10 # number of test data to plot
 
   for i in range(nplot):
     

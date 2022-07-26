@@ -58,7 +58,7 @@ class BayesianDoseLSTM(nn.Module):
         
         #self.lstm = nn.LSTM(self.n_inputs, self.n_neurons, self.n_layers, dropout = dropout)
         #TODO: Layers
-        self.lstm = BayesianLSTM(self.n_inputs, self.n_neurons, prior_sigma_1=1, prior_pi=1, posterior_rho_init=-3.0)
+        self.lstm = BayesianLSTM(self.n_inputs, self.n_neurons)#, prior_sigma_1=1, prior_pi=1, posterior_rho_init=-3.0)
         #TODO: Dropout Layer
 
 
@@ -82,12 +82,10 @@ class BayesianDoseLSTM(nn.Module):
         # self.hidden = self.init_hidden()
         
         #lstm_out, self.hidden = self.rnn(x)#, self.hidden)
-        lstm_out, self.hidden = self.lstm(x)#, self.hidden)
-        #lstm_out.view(-1, self.n_neurons)
+        lstm_out, self.hidden = self.lstm(x)
+        
         out = self.backend(lstm_out)
-        #gathering only the latent end-of-sequence for the linear layer
-        #x_ = x_[:, -1, :]
-        #x_ = self.linear(x_)
+        
         
         return out
 
