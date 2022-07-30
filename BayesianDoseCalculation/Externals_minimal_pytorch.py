@@ -64,9 +64,9 @@ class BayesianDoseLSTM(nn.Module):
 
         self.backend = nn.Sequential(
             nn.Linear(self.n_neurons, 100),
-            nn.ReLU(True),
+            nn.SiLU(True),#ReLU
             nn.Linear(100, 100),
-            nn.ReLU(True),
+            nn.SiLU(True),#Relu
             nn.Linear(100, self.n_outputs)
             )
 
